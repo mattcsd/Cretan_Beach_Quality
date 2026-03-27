@@ -43,16 +43,32 @@ class ViewController: UIViewController {
         return button
     }()
     
+    //MARK: - Search Bar
+    private let searchController = UISearchController(searchResultsController: nil)
+    private var filteredData: [WaterQuality] = []
+    private var isSearching = false
     
-    // MARK - Data
+    // MARK: - Data
     private var waterQualityData: [WaterQuality] = []
+    
     
     //MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        print("===========here is the navCOMTROLERRASDS: \(navigationController)")
         title = "Beach Water Quality"
         view.backgroundColor = .systemBackground
         
+        searchController.searchResultsUpdater = self
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search by beach name"
+        
+        navigationItem.searchController = searchController
+        navigationItem.hidesSearchBarWhenScrolling = false
+        definesPresentationContext = true
+
+        print("===========here is the navCOMTROLERRASDS: \(navigationController)")
+
         setupUI()
         fetchData()
     }
@@ -71,7 +87,7 @@ class ViewController: UIViewController {
         retryButton.addTarget(self, action: #selector(retryButtonTapped), for: .touchUpInside)
         
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.topAnchor),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -140,7 +156,7 @@ class ViewController: UIViewController {
                     
                     print("Success! Decoded \(decodedData.count) items")
                     if let first = decodedData.first{
-                        print("First item: \(first.coast) in \(first.perunit)")
+                        print("First item: \(first.coast) in \(first.perunit) and \(first.sampleTimestamp)") 
                     }
                     
                     self.waterQualityData = decodedData
@@ -172,16 +188,17 @@ class ViewController: UIViewController {
 //MARK: - UITableViewDataSource
 extension ViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return waterQualityData.count
+        return isSearching ? filteredData.count : waterQualityData.count
     }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let item = waterQualityData[indexPath.row]
-        
+        let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
+
         //Configure cell
         var config = cell.defaultContentConfiguration()
-        config.text = item.coast
-        config.secondaryText = "\(item.perunit) | E. coli: \(item.ecoli) | Enterococci \(item.intenterococci)"
+        config.text = item.coast ?? "Unknown"
+        config.secondaryText =
+        "\(item.perunit ?? "N/A") | E. coli: \(item.ecoli ?? "N/A") | Enterococci: \(item.intenterococci ?? "N/A")"
         
         config.secondaryTextProperties.numberOfLines = 2
         
@@ -198,20 +215,39 @@ extension ViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        let item  = waterQualityData[indexPath.row]
+        let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
         
         // Show alert with more details
         let alert = UIAlertController(
-            title: "\(item.coast)",
+            title: item.coast ?? "Unknown",
             message: """
-                Region: \(item.perunit)
-                E. coli: \(item.ecoli)
-                Enterococci: \(item.intenterococci)
-                Sample Date: \(item.sampleTimestamp)
+                Region: \(item.perunit ?? "N/A")
+                E. coli: \(item.ecoli ?? "N/A")
+                Enterococci: \(item.intenterococci ?? "N/A")
+                Sample Date: \(item.sampleTimestamp ?? "N/A")
                 """,
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+}
+
+extension ViewController: UISearchResultsUpdating {
+    func updateSearchResults(for searchController: UISearchController) {
+        let searchText = searchController.searchBar.text ?? ""
+
+        if searchText.isEmpty {
+            isSearching = false
+            filteredData = []
+        } else {
+            isSearching = true
+            filteredData = waterQualityData.filter { item in
+                (item.coast ?? "").lowercased().contains(searchText.lowercased()) ||
+                (item.perunit ?? "").lowercased().contains(searchText.lowercased())
+            }
+        }
+
+        tableView.reloadData()
     }
 }
