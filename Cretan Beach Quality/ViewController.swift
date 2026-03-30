@@ -48,6 +48,13 @@ class ViewController: UIViewController {
     private var filteredData: [WaterQuality] = []
     private var isSearching = false
     
+    // MARK: - REfresh
+    private let refreshControl = UIRefreshControl()
+    
+    @objc private func refreshData(){
+        fetchData()
+    }
+    
     // MARK: - Data
     private var waterQualityData: [WaterQuality] = []
     
@@ -83,6 +90,12 @@ class ViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         
+        //for the refresh
+        tableView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
+        
+
+        
         // SEtup button action
         retryButton.addTarget(self, action: #selector(retryButtonTapped), for: .touchUpInside)
         
@@ -107,6 +120,9 @@ class ViewController: UIViewController {
     
     //MARK - Network Call
     private func fetchData() {
+        if !refreshControl.isRefreshing{
+            activityIndicator.startAnimating()
+        }
         // Show loading
         activityIndicator.startAnimating()
         errorLabel.isHidden = true
@@ -126,6 +142,7 @@ class ViewController: UIViewController {
                 guard let self = self else { return }
                 
                 self.activityIndicator.stopAnimating()
+                self.refreshControl.endRefreshing()
                 
                 //Handle error
                 if let error = error {
@@ -137,6 +154,11 @@ class ViewController: UIViewController {
                 //Check response
                 if let httpResponse = response as? HTTPURLResponse{
                     print("Status code:\(httpResponse.statusCode)")
+                    // Check for non-200 status codes
+                     guard (200...299).contains(httpResponse.statusCode) else {
+                         self.showError("Server error: \(httpResponse.statusCode)")
+                         return
+                     }
                 }
                 
                 // Check data
