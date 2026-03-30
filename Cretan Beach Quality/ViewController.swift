@@ -62,7 +62,6 @@ class ViewController: UIViewController {
     //MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("===========here is the navCOMTROLERRASDS: \(navigationController)")
         title = "Beach Water Quality"
         view.backgroundColor = .systemBackground
         
@@ -73,8 +72,6 @@ class ViewController: UIViewController {
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true
-
-        print("===========here is the navCOMTROLERRASDS: \(navigationController)")
 
         setupUI()
         fetchData()
@@ -136,6 +133,8 @@ class ViewController: UIViewController {
         }
         print("Fetching data...")
         
+        
+        //REFINEMENT 2
         /*let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
         
             DispatchQueue.main.async{
@@ -247,6 +246,19 @@ extension ViewController: UITableViewDataSource {
         
     }
 }
+extension String {
+    func toLatin() -> String {
+        let mutable = NSMutableString(string: self) as CFMutableString
+        
+        // Convert to Latin
+        CFStringTransform(mutable, nil, kCFStringTransformToLatin, false)
+        
+        // Remove accents (optional but recommended)
+        CFStringTransform(mutable, nil, kCFStringTransformStripCombiningMarks, false)
+        
+        return mutable as String
+    }
+}
 
 // MARK: - UITableViewDelegate
 extension ViewController: UITableViewDelegate {
@@ -255,7 +267,32 @@ extension ViewController: UITableViewDelegate {
         
         let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
         
-        /* Show alert with more details
+        //build query
+        let coastName = (item.coast ?? "")
+            .components(separatedBy: "_")
+            .first ?? ""
+
+        
+        let coastLat = coastName.toLatin()
+
+        let query = "\(coastLat)"
+        
+        
+        
+        //fetch coordinates
+        
+        NetworkManager.shared.fetchCoordinates(for: query) { result in
+            print("QUERY:\(query)")
+            switch result {
+            case .success(let location):
+                print("📍 \(location.name)")
+                print("Lat:", location.latitude)
+                print("Lon:", location.longitude)
+            case .failure(let error):
+                print("❌ Geocoding failed:", error.localizedDescription)
+            }
+        }
+        /* Show alert with more details REFINEMENT 1
         let alert = UIAlertController(
             title: item.coast ?? "Unknown",
             message: """
