@@ -8,7 +8,8 @@
 import UIKit
 
 class ViewController: UIViewController {
-    
+    let GEONAMES_USERNAME = "mattsik"
+
     //MARK: UI Components
     
     private let tableView: UITableView = {
@@ -246,69 +247,86 @@ extension ViewController: UITableViewDataSource {
         
     }
 }
-extension String {
-    func toLatin() -> String {
-        let mutable = NSMutableString(string: self) as CFMutableString
-        
-        // Convert to Latin
-        CFStringTransform(mutable, nil, kCFStringTransformToLatin, false)
-        
-        // Remove accents (optional but recommended)
-        CFStringTransform(mutable, nil, kCFStringTransformStripCombiningMarks, false)
-        
-        return mutable as String
-    }
-}
 
 // MARK: - UITableViewDelegate
+
 extension ViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
         let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
         
-        //build query
-        let coastName = (item.coast ?? "")
+        // Clean the beach name - remove "_" and extra text
+        var coastName = (item.coast ?? "")
             .components(separatedBy: "_")
             .first ?? ""
-
         
-        let coastLat = coastName.toLatin()
-
-        let query = "\(coastLat)"
+        coastName = coastName.trimmingCharacters(in: .whitespacesAndNewlines)
         
+        let searchQuery = "\(coastName) Crete"
+        print("Searching GeoNames for: \(searchQuery)")
         
+        // Show loading indicator
+        if let cell = tableView.cellForRow(at: indexPath) {
+            let spinner = UIActivityIndicatorView(style: .medium)
+            spinner.startAnimating()
+            cell.accessoryView = spinner
+        }
         
-        //fetch coordinates
-        
-        NetworkManager.shared.fetchCoordinates(for: query) { result in
-            print("QUERY:\(query)")
+        NetworkManager.shared.fetchCoordinatesGeoNames(for: searchQuery,
+                                                         username: GEONAMES_USERNAME) { result in
+            DispatchQueue.main.async {
+                if let cell = tableView.cellForRow(at: indexPath) {
+                    cell.accessoryView = nil
+                }
+            }
+            
             switch result {
             case .success(let location):
-                print("📍 \(location.name)")
-                print("Lat:", location.latitude)
-                print("Lon:", location.longitude)
+                print("Beach found: \(location.name)")
+                print("Lat: \(location.latitude ?? 0), Lon: \(location.longitude ?? 0)")
+                
+                // Use the coordinates (e.g., show on map, get weather, etc.)
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(
+                        title: location.name,
+                        message: """
+                        Location: \(location.adminName1 ?? location.countryName ?? "Greece")
+                        Coordinates: \(location.latitude?.rounded(to: 4) ?? 0), 
+                                    \(location.longitude?.rounded(to: 4) ?? 0)
+                        """,
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
+                }
+                
             case .failure(let error):
-                print("❌ Geocoding failed:", error.localizedDescription)
+                print("Could not find coordinates for '\(coastName)': \(error)")
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(
+                        title: "Location Not Found",
+                        message: "Could not find '\(coastName)' on GeoNames.\nTry a different beach name.",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
+                }
             }
         }
-        /* Show alert with more details REFINEMENT 1
-        let alert = UIAlertController(
-            title: item.coast ?? "Unknown",
-            message: """
-                Region: \(item.perunit ?? "N/A")
-                E. coli: \(item.ecoli ?? "N/A")
-                Enterococci: \(item.intenterococci ?? "N/A")
-                Sample Date: \(item.sampleTimestamp ?? "N/A")
-                """,
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)*/
+        
         let vc = DetailViewController()
         vc.item = item
         navigationController?.pushViewController(vc, animated: true)
-        
+    }
+
+
+}
+// Helper extension for rounding
+extension Double {
+    func rounded(to places: Int) -> Double {
+        let divisor = pow(10.0, Double(places))
+        return (self * divisor).rounded() / divisor
     }
 }
 

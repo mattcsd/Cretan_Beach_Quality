@@ -7,16 +7,29 @@
 
 import Foundation
 
-struct GeocodingResponse: Decodable {
-    let results: [GeocodingResult]?
+// For GeoNames API response
+struct GeoNamesSearchResponse: Decodable {
+    let totalResultsCount: Int
+    let geonames: [GeoNamesResult]?
 }
 
-struct GeocodingResult: Decodable {
-    let id: Int  // Required field from API
+struct GeoNamesResult: Decodable {
+    let geonameId: Int
     let name: String
-    let latitude: Double
-    let longitude: Double
-    let country: String?  // Optional fields from API
-    let admin1: String?   // Region/state
-    let timezone: String? // Timezone
+    let lat: String      // Note: Comes as String, not Double
+    let lng: String      // Note: Comes as String, not Double
+    let countryName: String?
+    let adminName1: String?  // Region/state name
+    let toponymName: String?  // Main name if different from 'name'
+    let fcl: String?     // Feature class (P = populated place, etc.)
+    let fcode: String?   // Feature code
+    
+    // Computed properties for easy access
+    var latitude: Double? {
+        return Double(lat)
+    }
+    
+    var longitude: Double? {
+        return Double(lng)
+    }
 }
