@@ -136,7 +136,7 @@ class ViewController: UIViewController {
         }
         print("Fetching data...")
         
-        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+        /*let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
         
             DispatchQueue.main.async{
                 guard let self = self else { return }
@@ -192,7 +192,23 @@ class ViewController: UIViewController {
             }
             
         }
-        task.resume()
+        task.resume()*/
+        
+        NetworkManager.shared.fetch(from: url){ [weak self] (result: Result<[WaterQuality], Error>) in
+            guard let self = self else{return}
+            self.activityIndicator.stopAnimating()
+            
+            switch result{
+            case .success(let data):
+                self.waterQualityData = data
+                self.tableView.reloadData()
+                self.tableView.isHidden = false
+            case .failure(let error):
+                self.showError(error.localizedDescription)
+            }
+            
+            
+        }
     }
     
     @objc private func retryButtonTapped(){
