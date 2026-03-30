@@ -217,7 +217,7 @@ extension ViewController: UITableViewDelegate {
         
         let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
         
-        // Show alert with more details
+        /* Show alert with more details
         let alert = UIAlertController(
             title: item.coast ?? "Unknown",
             message: """
@@ -229,7 +229,11 @@ extension ViewController: UITableViewDelegate {
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        present(alert, animated: true)*/
+        let vc = DetailViewController()
+        vc.item = item
+        navigationController?.pushViewController(vc, animated: true)
+        
     }
 }
 
