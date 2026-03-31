@@ -263,7 +263,27 @@ extension ViewController: UITableViewDelegate {
         
         coastName = coastName.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        let searchQuery = "\(coastName) Crete"
+        //add region to search, caution this could be nil. check it just in case
+        var region: String {
+            switch item.perunit {
+            case "ΧΑΝΙΩΝ":
+                return "Chania"
+            case "ΛΑΣΙΘΙΟΥ":
+                return "Lasithi"
+            case "ΡΕΘΥΜΝΟΥ":
+                return "Rethymno"
+            case "ΗΡΑΚΛΕΙΟΥ":
+                return "Heraklion"
+            case "Κρήτη", "Ν/Α":
+                return "Crete"
+            case nil:
+                return "Crete"
+            default:
+                return "Crete"
+            }
+        }
+        
+        let searchQuery = "\(coastName) \(region)"
         print("Searching GeoNames for: \(searchQuery)")
         
         // Show loading indicator
@@ -286,7 +306,7 @@ extension ViewController: UITableViewDelegate {
                 print("Beach found: \(location.name)")
                 print("Lat: \(location.latitude ?? 0), Lon: \(location.longitude ?? 0)")
                 
-                // Use the coordinates (e.g., show on map, get weather, etc.)
+                // Use the coordinates to get weather
                 DispatchQueue.main.async {
                     let alert = UIAlertController(
                         title: location.name,

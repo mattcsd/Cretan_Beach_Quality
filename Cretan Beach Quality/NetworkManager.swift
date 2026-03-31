@@ -70,7 +70,7 @@ final class NetworkManager{
             
             switch result {
             case .success(let response):
-                print("📦 Total results: \(response.totalResultsCount)")
+                print("otal results: \(response.totalResultsCount)")
                 
                 guard let results = response.geonames, !results.isEmpty else {
                     let error = NSError(domain: "GeoNamesError",
@@ -81,13 +81,13 @@ final class NetworkManager{
                 }
                 
                 let firstResult = results[0]
-                print("✅ Found: \(firstResult.name) in \(firstResult.countryName ?? "Greece")")
-                print("📍 Coordinates: (\(firstResult.lat), \(firstResult.lng))")
+                print("Found: \(firstResult.name) in \(firstResult.countryName ?? "Greece")")
+                print("Coordinates: (\(firstResult.lat), \(firstResult.lng))")
                 
                 completion(.success(firstResult))
                 
             case .failure(let error):
-                print("❌ GeoNames error: \(error)")
+                print(" GeoNames error: \(error)")
                 completion(.failure(error))
             }
         }
@@ -113,66 +113,6 @@ final class NetworkManager{
                 completion(.failure(error))
             }
         }
-    }
-    func fetchCoordinates(for place: String, completion: @escaping (Result<GeocodingResult, Error>) -> Void){
-        
-        let query = place.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        
-        let urlString = "https://geocoding-api.open-meteo.com/v1/search?name=\(query)&count=1"
-        
-        guard let url = URL(string: urlString) else {
-            completion(.failure(NSError(domain: "Bad URL", code: -1)))
-            return
-        }
-        
-        print("🌐 URL: \(urlString)")
-        
-        // TEMPORARY: Direct URLSession to see raw JSON
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            if let error = error {
-                print("❌ Network error: \(error)")
-                completion(.failure(error))
-                return
-            }
-            
-            guard let data = data else {
-                print("❌ No data received")
-                return
-            }
-            
-            // Print raw JSON as string
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("📝 Raw JSON response:")
-                print(jsonString)
-            }
-            
-            // Try to decode
-            do {
-                let decoder = JSONDecoder()
-                let response = try decoder.decode(GeocodingResponse.self, from: data)
-                print("✅ Successfully decoded: \(response)")
-                print("Results count: \(response.results?.count ?? 0)")
-                
-                if let firstResult = response.results?.first {
-                    print("First result: \(firstResult)")
-                    DispatchQueue.main.async {
-                        completion(.success(firstResult))
-                    }
-                } else {
-                    print("❌ No results found")
-                    let error = NSError(domain: "Geocoding", code: -2, userInfo: [NSLocalizedDescriptionKey: "No results found"])
-                    DispatchQueue.main.async {
-                        completion(.failure(error))
-                    }
-                }
-            } catch {
-                print("❌ Decoding error: \(error)")
-                DispatchQueue.main.async {
-                    completion(.failure(error))
-                }
-            }
-        }
-        task.resume()
     }*/
 }
 
