@@ -33,4 +33,24 @@ struct WaterQuality: Codable{
     }
 }
 
+extension WaterQuality {
+    var regionName: String {
+        switch perunit {
+        case "ΧΑΝΙΩΝ":
+            return "Chania"
+        case "ΛΑΣΙΘΙΟΥ":
+            return "Lasithi"
+        case "ΡΕΘΥΜΝΟΥ":
+            return "Rethymno"
+        case "ΗΡΑΚΛΕΙΟΥ":
+            return "Heraklion"
+        case "Κρήτη", "Ν/Α":
+            return "Crete"
+        case nil:
+            return "Crete"
+        default:
+            return "Crete"
+        }
+    }
+}
 

@@ -193,7 +193,7 @@ class ViewController: UIViewController {
             
         }
         task.resume()*/
-        
+                    // weak for not retaining cyle if user closes screen.
         NetworkManager.shared.fetch(from: url){ [weak self] (result: Result<[WaterQuality], Error>) in
             guard let self = self else{return}
             self.activityIndicator.stopAnimating()
@@ -256,92 +256,84 @@ extension ViewController: UITableViewDelegate {
         
         let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
         
-        // Clean the beach name - remove "_" and extra text
+        // clean the beach name : remove "_" and extra text -> keep only first name
         var coastName = (item.coast ?? "")
             .components(separatedBy: "_")
             .first ?? ""
         
         coastName = coastName.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        //add region to search, caution this could be nil. check it just in case
-        var region: String {
-            switch item.perunit {
-            case "ΧΑΝΙΩΝ":
-                return "Chania"
-            case "ΛΑΣΙΘΙΟΥ":
-                return "Lasithi"
-            case "ΡΕΘΥΜΝΟΥ":
-                return "Rethymno"
-            case "ΗΡΑΚΛΕΙΟΥ":
-                return "Heraklion"
-            case "Κρήτη", "Ν/Α":
-                return "Crete"
-            case nil:
-                return "Crete"
-            default:
-                return "Crete"
-            }
-        }
         
+        let region = item.regionName
         let searchQuery = "\(coastName) \(region)"
         print("Searching GeoNames for: \(searchQuery)")
         
-        // Show loading indicator
+        // show loading indicator
         if let cell = tableView.cellForRow(at: indexPath) {
             let spinner = UIActivityIndicatorView(style: .medium)
             spinner.startAnimating()
             cell.accessoryView = spinner
         }
-        
+        // get the coordinates
         NetworkManager.shared.fetchCoordinatesGeoNames(for: searchQuery,
-                                                         username: GEONAMES_USERNAME) { result in
+                                                       username: GEONAMES_USERNAME) { [weak self] geocodingResult in
+            guard let self = self else { return }
+            
             DispatchQueue.main.async {
                 if let cell = tableView.cellForRow(at: indexPath) {
                     cell.accessoryView = nil
                 }
             }
             
-            switch result {
+            switch geocodingResult {
             case .success(let location):
-                print("Beach found: \(location.name)")
-                print("Lat: \(location.latitude ?? 0), Lon: \(location.longitude ?? 0)")
-                
-                // Use the coordinates to get weather
-                DispatchQueue.main.async {
-                    let alert = UIAlertController(
-                        title: location.name,
-                        message: """
-                        Location: \(location.adminName1 ?? location.countryName ?? "Greece")
-                        Coordinates: \(location.latitude?.rounded(to: 4) ?? 0), 
-                                    \(location.longitude?.rounded(to: 4) ?? 0)
-                        """,
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.present(alert, animated: true)
+                //we got the coordinates
+                guard let lat = location.latitude, let lon = location.longitude else {
+                    //coordinates are invalid
+                    print("Invalid coordinates")
+                    self.navigateToDetail(with: item, latitude: nil, longitude: nil, weather: nil )
+                    return
                 }
                 
+                // found beach
+                print("BEACH FOUND \(location.name)")
+                print("Lat: \(location.latitude ?? 0), Lon: \(location.longitude ?? 0)") // not sure about this
+                
+                
+                NetworkManager.shared.fetchWeather(latitude: lat, longitude: lon) { [weak self] weatherResult in
+                    guard let self else { return }
+                    
+                    DispatchQueue.main.async{
+                        switch weatherResult {
+                        case .success(let weather):
+                            print("WEATHER FOUND \(weather.current.temperature)C")
+                            self.navigateToDetail(with: item, latitude: lat, longitude: lon, weather: weather)
+                        case .failure(let error):
+                            //weather fetch error, still show detail with coordinates
+                            self.navigateToDetail(with: item, latitude: lat, longitude: lon, weather: nil)
+                        }
+                    }
+                }
             case .failure(let error):
-                print("Could not find coordinates for '\(coastName)': \(error)")
-                DispatchQueue.main.async {
-                    let alert = UIAlertController(
-                        title: "Location Not Found",
-                        message: "Could not find '\(coastName)' on GeoNames.\nTry a different beach name.",
-                        preferredStyle: .alert
-                    )
-                    alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.present(alert, animated: true)
-                }
+                print ("Geocoding failed: \(error)")
+                self.navigateToDetail(with: item, latitude: nil, longitude: nil, weather: nil)
             }
         }
-        
+    }
+    
+    private func navigateToDetail(with item: WaterQuality, latitude: Double?, longitude: Double?, weather: WeatherResponse?){
         let vc = DetailViewController()
         vc.item = item
+        vc.latitude = latitude
+        vc.longitude = longitude
+        vc.weatherData = weather
         navigationController?.pushViewController(vc, animated: true)
     }
 
-
 }
+
+
+
 // Helper extension for rounding
 extension Double {
     func rounded(to places: Int) -> Double {

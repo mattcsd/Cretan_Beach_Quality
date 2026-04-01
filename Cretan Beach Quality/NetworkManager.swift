@@ -92,6 +92,29 @@ final class NetworkManager{
             }
         }
     }
+    
+    func fetchWeather(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void){
+        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=1"
+        
+        guard let url = URL(string: urlString) else {
+            completion(.failure(NSError(domain: "Bad URL", code: -1)))
+            return
+        }
+        
+        print("Fetching weather for beach at \(latitude) \(longitude)")
+        
+        fetch(from: url) { (result: Result<WeatherResponse, Error>) in
+            switch result {
+            case .success(let weather):
+                print("Weather data received - Temp \(weather.current.temperature)C")
+                completion(.success(weather))
+            case .failure(let error):
+                print("Weather fetch failed: \(error)")
+                completion(.failure(error))
+            }
+            
+        }
+    }
     /*
     func fetchCoordinates(for place: String, completion: @escaping (Result<GeocodingResult, Error>) -> Void){
         
