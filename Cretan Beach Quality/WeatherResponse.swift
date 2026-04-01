@@ -95,7 +95,7 @@ struct HourlyWeather: Decodable {
         let now = Date()
         let currentHour = calendar.component(.hour, from: now)
         
-        for i in 0..<min(time.count, limit) {
+        for i in 0..<time.count {
             let timeString = time[i]
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
@@ -103,8 +103,31 @@ struct HourlyWeather: Decodable {
             if let date = formatter.date(from: timeString) {
                 let hour = calendar.component(.hour, from: date)
                 
-                // Only show future hours (including current)
+                // Show all hours from current hour onward (up to limit)
                 if hour >= currentHour && forecasts.count < limit {
+                    let outputFormatter = DateFormatter()
+                    outputFormatter.dateFormat = "HH:mm"
+                    
+                    forecasts.append(HourlyForecast(
+                        time: outputFormatter.string(from: date),
+                        temperature: temperature[i],
+                        windSpeed: windSpeed[i],
+                        windDirection: windDirection[i],
+                        weatherCode: weatherCode[i]
+                    ))
+                }
+            }
+        }
+        
+        // If still empty (e.g., testing at 11pm with no more hours), show the first few hours
+        if forecasts.isEmpty && time.count > 0 {
+            print("⚠️ No remaining hours today, showing first available hours")
+            for i in 0..<min(time.count, limit) {
+                let timeString = time[i]
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+                
+                if let date = formatter.date(from: timeString) {
                     let outputFormatter = DateFormatter()
                     outputFormatter.dateFormat = "HH:mm"
                     

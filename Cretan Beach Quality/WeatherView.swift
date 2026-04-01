@@ -171,6 +171,19 @@ class WeatherView: UIView {
         
         let current = weather.current
         
+        // Debug: Print hourly data
+            print("🌤️ HOURLY FORECAST DEBUG:")
+            print("   Total hourly entries: \(weather.hourly.time.count)")
+            print("   Times: \(weather.hourly.time)")
+            print("   Temperatures: \(weather.hourly.temperature)")
+            
+            let forecasts = weather.hourly.getHourlyForecast(upTo: 8)
+            print("   Filtered forecasts count: \(forecasts.count)")
+            for forecast in forecasts {
+                print("   \(forecast.time): \(forecast.temperature)°C")
+            }
+            
+        
         // Configure background color based on temperature
         currentWeatherContainer.backgroundColor = current.backgroundColor.withAlphaComponent(0.2)
         
@@ -196,12 +209,25 @@ class WeatherView: UIView {
     }
     
     private func configureHourlyForecast(_ forecasts: [HourlyForecast]) {
+        print("📊 Configuring hourly forecast with \(forecasts.count) items")
+        
         // Clear existing views
         hourlyStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         
         for forecast in forecasts {
+            print("   Adding: \(forecast.time) - \(forecast.temperature)°C")
             let hourView = createHourlyForecastView(forecast)
             hourlyStackView.addArrangedSubview(hourView)
+        }
+        
+        // If no forecasts, show a message
+        if forecasts.isEmpty {
+            let emptyLabel = UILabel()
+            emptyLabel.text = "No hourly data available"
+            emptyLabel.textColor = .secondaryLabel
+            emptyLabel.font = .systemFont(ofSize: 14)
+            emptyLabel.textAlignment = .center
+            hourlyStackView.addArrangedSubview(emptyLabel)
         }
     }
     
