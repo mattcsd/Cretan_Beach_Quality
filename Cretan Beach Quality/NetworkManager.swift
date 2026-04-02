@@ -55,9 +55,9 @@ final class NetworkManager{
         
         let query = place.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         
-        // Use searchJSON endpoint for JSON response
+        // use searchJSON endpoint for JSON response
         // maxRows=1 to get only the best match
-        // Add country=GR to limit to Greece for better accuracy
+        // add country=GR to limit to Greece for better accuracy
         let urlString = "https://secure.geonames.org/searchJSON?q=\(query)&country=GR&maxRows=1&username=\(username)"
         
         
@@ -94,7 +94,9 @@ final class NetworkManager{
     }
     
     func fetchWeather(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void){
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=1"
+        let forecastDays: Int = 7 // how many days to get data for.
+        
+        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=\(forecastDays)"
         
         guard let url = URL(string: urlString) else {
             completion(.failure(NSError(domain: "Bad URL", code: -1)))

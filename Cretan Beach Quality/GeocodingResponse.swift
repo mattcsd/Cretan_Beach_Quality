@@ -16,15 +16,15 @@ struct GeoNamesSearchResponse: Decodable {
 struct GeoNamesResult: Decodable {
     let geonameId: Int
     let name: String
-    let lat: String      // Note: Comes as String, not Double
-    let lng: String      // Note: Comes as String, not Double
+    let lat: String
+    let lng: String
     let countryName: String?
-    let adminName1: String?  // Region/state name
-    let toponymName: String?  // Main name if different from 'name'
+    let adminName1: String?
+    let toponymName: String?
     let fcl: String?     // Feature class (P = populated place, etc.)
-    let fcode: String?   // Feature code
+    let fcode: String?
     
-    // Computed properties for easy access
+    // computed properties for easy access
     var latitude: Double? {
         return Double(lat)
     }

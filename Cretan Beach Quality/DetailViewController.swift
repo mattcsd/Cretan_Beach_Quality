@@ -18,6 +18,11 @@ class DetailViewController: UIViewController {
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     
+    private var dailyForecasts: [DailyForecast] = []
+    private var expandedIndex: Int?
+    private var dailyTableView = SelfSizingTableView()
+    
+    
     //water quality section
     private let waterQualityTitle: UILabel = {
         let label = UILabel()
@@ -32,46 +37,94 @@ class DetailViewController: UIViewController {
     private let enterococciLabel = UILabel()
     private let dateLabel = UILabel()
     
-    private let weatherView = WeatherView()
+    private let currentWeatherView = CurrentWeatherView()
     private let loadingIndicator = UIActivityIndicatorView(style: .medium)
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         setupUI()
         configureWaterQuality()
         
-        if let weather = weatherData{
-            // we got the data
-            // already stopps in configure weatherView.hideLoading()
-            weatherView.configure(with: weather)
-        } else if let lat = latitude, let lon = longitude{
-            // we have coordinates, fetch weather
+        if let weather = weatherData {
+            currentWeatherView.configure(with: weather)
+            self.dailyForecasts = weather.getDailyForecasts()
+            setupDailyForecastTable()
+            dailyTableView.reloadData()
+        } else if let lat = latitude, let lon = longitude {
             NetworkManager.shared.fetchWeather(latitude: lat, longitude: lon) { [weak self] result in
-                guard let self = self else {return}
+                guard let self = self else { return }
                 
                 DispatchQueue.main.async {
                     switch result {
-                    case.success(let weather):
-                        print("Weather loaded: \(weather.current.temperature)C")
+                    case .success(let weather):
+                        print("Weather loaded: \(weather.current.temperature)°C")
                         self.weatherData = weather
-                        self.weatherView.hideLoading()
+                        self.currentWeatherView.configure(with: weather)
+                        self.dailyForecasts = weather.getDailyForecasts()
+                        self.setupDailyForecastTable()
+                        self.dailyTableView.reloadData()
                         
-                        self.weatherView.configure(with: weather)
                     case .failure(let error):
                         print("Error fetching weather: \(error)")
-                        self.weatherView.showError("Failed to fetch weather data.")
                     }
                 }
             }
-        } else{
-            weatherView.showError("Weather data unavailable for this beach")
+        } else {
+            // show error state for current weather
+            let errorLabel = UILabel()
+            errorLabel.text = "Weather data unavailable"
+            errorLabel.textColor = .secondaryLabel
+            errorLabel.textAlignment = .center
+            currentWeatherView.addSubview(errorLabel)
         }
-                    
+    }
+    
+    private func setupDailyForecastTable() {
+        dailyTableView.delegate = self
+        dailyTableView.dataSource = self
+        dailyTableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
+        dailyTableView.separatorStyle = .none
+        dailyTableView.backgroundColor = .clear
+        dailyTableView.isScrollEnabled = false
+        
+        // Eeable automatic row height
+        dailyTableView.rowHeight = UITableView.automaticDimension
+        dailyTableView.estimatedRowHeight = 70
+        
+        // remove any existing height constraints
+        dailyTableView.constraints.forEach { constraint in
+            if constraint.firstAttribute == .height {
+                dailyTableView.removeConstraint(constraint)
+            }
+        }
+    }
+    
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // force the table to update its height based on content
+        dailyTableView.invalidateIntrinsicContentSize()
+    }
+    
+    private func toggleExpanded(at index: Int) {
+        if expandedIndex == index {
+            expandedIndex = nil
+        } else {
+            expandedIndex = index
+        }
+        
+        // reload the row to animate height change
+        dailyTableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
+        
+        // force the table to update its intrinsic content size
+        DispatchQueue.main.async {
+            self.dailyTableView.invalidateIntrinsicContentSize()
+            self.view.layoutIfNeeded()
+        }
     }
     
     private func setupUI(){
-        view.backgroundColor = .white // or .white
+        view.backgroundColor = .white // or .background
         
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
@@ -114,17 +167,31 @@ class DetailViewController: UIViewController {
         
         // crete weather section stack
         let weatherStack = UIStackView(arrangedSubviews: [
-            weatherView
+            currentWeatherView
         ])
     
         weatherStack.axis = .vertical
         weatherStack.spacing = 12
         
+        // create daily stack with title
+        let dailyTitleLabel = UILabel()
+        dailyTitleLabel.text = "7-Day Forecast"
+        dailyTitleLabel.font = .boldSystemFont(ofSize: 18)
+
+        let dailyStack = UIStackView(arrangedSubviews: [
+            dailyTitleLabel,
+            dailyTableView
+        ])
+        dailyStack.axis = .vertical
+        dailyStack.spacing = 12
+
         // main stack
         let mainStack = UIStackView(arrangedSubviews: [
             waterQualityStack,
             createDivider(),
-            weatherStack
+            weatherStack,
+            createDivider(),
+            dailyStack
         ])
         
         mainStack.axis = .vertical
@@ -138,8 +205,6 @@ class DetailViewController: UIViewController {
             mainStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             mainStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
             mainStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
-            
-            weatherView.heightAnchor.constraint(greaterThanOrEqualToConstant: 280)
         ])
     
     }
@@ -164,18 +229,18 @@ class DetailViewController: UIViewController {
             // Create a formatter to parse the input date string
             let inputFormatter = DateFormatter()
             inputFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-            inputFormatter.locale = Locale(identifier: "en_US_POSIX") // Important for ISO dates
-            inputFormatter.timeZone = TimeZone(secondsFromGMT: 0) // Assuming the date is in UTC
+            inputFormatter.locale = Locale(identifier: "en_US_POSIX")
+            inputFormatter.timeZone = TimeZone(secondsFromGMT: 0)
             
             if let date = inputFormatter.date(from: dateString) {
-                // Create a formatter for the output
+                // create a formatter for the output
                 let outputFormatter = DateFormatter()
                 outputFormatter.dateFormat = "MMM d, yyyy 'at' HH:mm:ss"
                 outputFormatter.locale = Locale(identifier: "en_US")
                 
                 dateLabel.text = "Date: \(outputFormatter.string(from: date))"
             } else {
-                // If parsing fails, show the original string
+                // if parsing fails, show the original string
                 dateLabel.text = "Date: \(dateString)"
             }
         } else {
@@ -193,4 +258,60 @@ class DetailViewController: UIViewController {
     }
     */
 
+}
+// MARK: - UITableView Delegate & DataSource
+extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return dailyForecasts.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: DailyForecastCell.identifier, for: indexPath) as? DailyForecastCell else {
+            return UITableViewCell()
+        }
+        
+        let forecast = dailyForecasts[indexPath.row]
+        let isExpanded = expandedIndex == indexPath.row
+        cell.configure(with: forecast, isExpanded: isExpanded)
+        cell.delegate = self
+        
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return UITableView.automaticDimension
+    }
+
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
+        return expandedIndex == indexPath.row ? 220 : 70
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        toggleExpanded(at: indexPath.row)
+        tableView.reloadRows(at: [indexPath], with: .automatic)
+    }
+}
+
+// MARK: - DailyForecastCellDelegate
+extension DetailViewController: DailyForecastCellDelegate {
+
+    func didTapExpandButton(for cell: DailyForecastCell) {
+        guard let indexPath = dailyTableView.indexPath(for: cell) else { return }
+        toggleExpanded(at: indexPath.row)
+        dailyTableView.reloadRows(at: [indexPath], with: .automatic)
+    }
+}
+
+// MARK: - Self-sizing UITableView
+// UITableView has no intrinsicContentSize by default, so inside a UIStackView
+// it collapses to zero height. This subclass fixes that by reporting contentSize.
+private class SelfSizingTableView: UITableView {
+    override var contentSize: CGSize {
+        didSet { invalidateIntrinsicContentSize() }
+    }
+    override var intrinsicContentSize: CGSize {
+        layoutIfNeeded()
+        return CGSize(width: UIView.noIntrinsicMetric, height: contentSize.height)
+    }
 }
