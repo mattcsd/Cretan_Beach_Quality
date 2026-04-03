@@ -51,13 +51,13 @@ class HourlyForecastView: UIView {
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+            // superly needed, sets the height for the hourly
             scrollView.heightAnchor.constraint(equalToConstant: 100),
             
             contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
             
             stackView.topAnchor.constraint(equalTo: contentView.topAnchor),
             stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),

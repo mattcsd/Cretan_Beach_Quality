@@ -17,6 +17,17 @@ class CurrentWeatherView: UIView {
         return view
     }()
     
+    //add a title
+    private let titleLabel:UILabel = {
+        let label = UILabel()
+        label.text = "Current Weather"
+        label.font = .systemFont(ofSize: 14, weight: .bold)
+        label.textColor = .secondaryLabel
+        return label
+    }()
+    
+    
+    
     private let weatherIcon = UIImageView()
     private let temperatureLabel = UILabel()
     private let windSpeedLabel = UILabel()
@@ -36,12 +47,12 @@ class CurrentWeatherView: UIView {
         addSubview(containerView)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         
-        [weatherIcon, temperatureLabel, windSpeedLabel, windDirectionArrow, timeLabel].forEach {
+        [titleLabel, weatherIcon, temperatureLabel, windSpeedLabel, windDirectionArrow, timeLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             containerView.addSubview($0)
         }
         
-        temperatureLabel.font = .systemFont(ofSize: 36, weight: .bold)
+        temperatureLabel.font = .systemFont(ofSize: 33, weight: .bold)
         windSpeedLabel.font = .systemFont(ofSize: 14)
         timeLabel.font = .systemFont(ofSize: 14)
         timeLabel.textColor = .secondaryLabel
@@ -56,26 +67,36 @@ class CurrentWeatherView: UIView {
             containerView.leadingAnchor.constraint(equalTo: leadingAnchor),
             containerView.trailingAnchor.constraint(equalTo: trailingAnchor),
             containerView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            containerView.heightAnchor.constraint(equalToConstant: 100),
+            containerView.heightAnchor.constraint(equalToConstant: 110),
             
+            //title label
+            titleLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 10),
+            //titleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 100),
+            titleLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            
+            // weather icon
             weatherIcon.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
-            weatherIcon.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            weatherIcon.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 5),
             weatherIcon.widthAnchor.constraint(equalToConstant: 50),
             weatherIcon.heightAnchor.constraint(equalToConstant: 50),
+
+            // temperature label
+            temperatureLabel.leadingAnchor.constraint(equalTo: weatherIcon.trailingAnchor, constant: 15),
+            temperatureLabel.centerYAnchor.constraint(equalTo: weatherIcon.centerYAnchor),
             
-            temperatureLabel.leadingAnchor.constraint(equalTo: weatherIcon.trailingAnchor, constant: 20),
-            temperatureLabel.topAnchor.constraint(equalTo: containerView.topAnchor, constant: 20),
+            // windspeed label
+            windSpeedLabel.leadingAnchor.constraint(equalTo: temperatureLabel.trailingAnchor, constant: 30),
+            windSpeedLabel.centerYAnchor.constraint(equalTo: temperatureLabel.centerYAnchor),
             
-            windSpeedLabel.leadingAnchor.constraint(equalTo: temperatureLabel.leadingAnchor),
-            windSpeedLabel.topAnchor.constraint(equalTo: temperatureLabel.bottomAnchor, constant: 8),
-            
-            windDirectionArrow.leadingAnchor.constraint(equalTo: windSpeedLabel.trailingAnchor, constant: 8),
+            // wind direction
+            windDirectionArrow.leadingAnchor.constraint(equalTo: windSpeedLabel.trailingAnchor, constant: 30),
             windDirectionArrow.centerYAnchor.constraint(equalTo: windSpeedLabel.centerYAnchor),
-            windDirectionArrow.widthAnchor.constraint(equalToConstant: 20),
-            windDirectionArrow.heightAnchor.constraint(equalToConstant: 20),
+            windDirectionArrow.widthAnchor.constraint(equalToConstant: 22),
+            windDirectionArrow.heightAnchor.constraint(equalToConstant: 22),
             
-            timeLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
-            timeLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12),
+            //time label
+            timeLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -15),
+            timeLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -8),
         ])
     }
     

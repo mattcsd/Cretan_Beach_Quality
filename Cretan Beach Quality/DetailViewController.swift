@@ -38,7 +38,7 @@ class DetailViewController: UIViewController {
     private let dateLabel = UILabel()
     
     private let currentWeatherView = CurrentWeatherView()
-    private let loadingIndicator = UIActivityIndicatorView(style: .medium)
+    //private let loadingIndicator = UIActivityIndicatorView(style: .medium)
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -88,16 +88,9 @@ class DetailViewController: UIViewController {
         dailyTableView.backgroundColor = .clear
         dailyTableView.isScrollEnabled = false
         
-        // Eeable automatic row height
+        // Enable automatic row height
         dailyTableView.rowHeight = UITableView.automaticDimension
         dailyTableView.estimatedRowHeight = 70
-        
-        // remove any existing height constraints
-        dailyTableView.constraints.forEach { constraint in
-            if constraint.firstAttribute == .height {
-                dailyTableView.removeConstraint(constraint)
-            }
-        }
     }
     
     override func viewDidLayoutSubviews() {
@@ -106,7 +99,7 @@ class DetailViewController: UIViewController {
         dailyTableView.invalidateIntrinsicContentSize()
     }
     
-    private func toggleExpanded(at index: Int) {
+    /*private func toggleExpanded(at index: Int) {
         if expandedIndex == index {
             expandedIndex = nil
         } else {
@@ -116,11 +109,34 @@ class DetailViewController: UIViewController {
         // reload the row to animate height change
         dailyTableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
         
-        // force the table to update its intrinsic content size
+        //force the table to update its intrinsic content size
         DispatchQueue.main.async {
             self.dailyTableView.invalidateIntrinsicContentSize()
             self.view.layoutIfNeeded()
         }
+    }*/
+    private func toggleExpanded(at index: Int) {
+        let oldIndex = expandedIndex
+        
+        if expandedIndex == index {
+            expandedIndex = nil
+        } else {
+            expandedIndex = index
+        }
+        
+        // Smoothly update the heights without "restarting" the cell instances
+        dailyTableView.performBatchUpdates({
+            var rowsToReload = [IndexPath(row: index, section: 0)]
+            if let old = oldIndex, old != index {
+                rowsToReload.append(IndexPath(row: old, section: 0))
+            }
+            // This is better than reloadRows for expanded states
+            dailyTableView.reloadRows(at: rowsToReload, with: .fade)
+        }, completion: { _ in
+            // Keep the table height in sync with the ScrollView
+            self.dailyTableView.invalidateIntrinsicContentSize()
+            self.view.layoutIfNeeded()
+        })
     }
     
     private func setupUI(){
@@ -263,6 +279,7 @@ class DetailViewController: UIViewController {
 extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        print("DEBUG: [Table Count] System asking for row count. Returning: \(dailyForecasts.count)")
         return dailyForecasts.count
     }
     
@@ -288,8 +305,15 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        print("--- DEBUG START: Row Clicked ---")
+        print("DEBUG: [Click] User tapped row: \(indexPath.row)")
         toggleExpanded(at: indexPath.row)
-        tableView.reloadRows(at: [indexPath], with: .automatic)
+        //tableView.reloadRows(at: [indexPath], with: .automatic)
+        //tableView.beginUpdates()
+        //tableView.endUpdates()
+            
+        print("--- DEBUG END ---")
+        
     }
 }
 

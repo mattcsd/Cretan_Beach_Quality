@@ -106,6 +106,7 @@ class DailyForecastCell: UITableViewCell {
         delegate?.didTapExpandButton(for: self)
     }
     
+    
     func configure(with forecast: DailyForecast, isExpanded: Bool) {
         self.isExpanded = isExpanded
         
@@ -121,24 +122,27 @@ class DailyForecastCell: UITableViewCell {
                 hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
                 containerView.addSubview(hourlyForecastView!)
                 
-                // centerY relative to containerView — a circular dependency.
+                let bottomAnchor = hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
+                bottomAnchor.priority = UILayoutPriority(999)
+                
                 NSLayoutConstraint.activate([
                     hourlyForecastView!.topAnchor.constraint(equalTo: weatherIcon.bottomAnchor, constant: 12),
                     hourlyForecastView!.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
                     hourlyForecastView!.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-                    hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
+                    bottomAnchor
                 ])
             }
-
             hourlyForecastView?.configure(with: forecast.hourlyForecasts, for: forecast.date)
             hourlyForecastView?.isHidden = false
         } else {
             hourlyForecastView?.removeFromSuperview()
-            hourlyForecastView = nil
+            //hourlyForecastView?.isHidden = true
+            hourlyForecastView = nil // keeping memory clear.
         }
         
-        // force layout update
+        // Force layout update
         setNeedsLayout()
         layoutIfNeeded()
     }
+    
 }
