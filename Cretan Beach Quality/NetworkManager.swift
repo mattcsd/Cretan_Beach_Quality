@@ -12,12 +12,15 @@ final class NetworkManager{
     static let shared = NetworkManager()
     private init(){}
     
+    // MARK: TODO
     // async await calls.
+    //maybe add the Geocodingservice and remove the file
     
     func fetch<T: Decodable>(
         from url:URL,
         completion: @escaping (Result<T, Error>) -> Void){
 
+        //currently in backgrounf thread
         let task = URLSession.shared.dataTask(with: url) { data, response, error in
             
             // error handling
@@ -49,50 +52,6 @@ final class NetworkManager{
             }
         }
         task.resume()
-    }
-    
-    func fetchCoordinatesGeoNames(for place: String,
-                                  username: String,
-                                  completion: @escaping (Result<GeoNamesResult, Error>) -> Void) {
-        
-        let query = place.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        
-        // use searchJSON endpoint for JSON response
-        // maxRows=1 to get only the best match
-        // add country=GR to limit to Greece for better accuracy
-        let urlString = "https://secure.geonames.org/searchJSON?q=\(query)&country=GR&maxRows=1&username=\(username)"
-        
-        
-        guard let url = URL(string: urlString) else {
-            completion(.failure(NSError(domain: "Bad URL", code: -1)))
-            return
-        }
-                
-        fetch(from: url) { (result: Result<GeoNamesSearchResponse, Error>) in
-            
-            switch result {
-            case .success(let response):
-                print("otal results: \(response.totalResultsCount)")
-                
-                guard let results = response.geonames, !results.isEmpty else {
-                    let error = NSError(domain: "GeoNamesError",
-                                       code: -2,
-                                       userInfo: [NSLocalizedDescriptionKey: "No results found for '\(place)' in Greece"])
-                    completion(.failure(error))
-                    return
-                }
-                
-                let firstResult = results[0]
-                print("Found: \(firstResult.name) in \(firstResult.countryName ?? "Greece")")
-                print("Coordinates: (\(firstResult.lat), \(firstResult.lng))")
-                
-                completion(.success(firstResult))
-                
-            case .failure(let error):
-                print(" GeoNames error: \(error)")
-                completion(.failure(error))
-            }
-        }
     }
     
     func fetchWeather(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void){

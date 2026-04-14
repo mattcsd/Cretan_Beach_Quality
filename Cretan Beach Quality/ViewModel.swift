@@ -9,7 +9,7 @@ import Foundation
 
 
 //extension ViewController { // sth prokeimenh isws de xreiazetai alla gia na mathoume an eixame panw apo ena View, pou exoume to DetailViewController
-    
+// tha doyleye anti giua 2 files tade1_ViewModel, tade2_ViewModel(?) nomizw nai.
     
 //not yet, swiftUI //@Observable
 
@@ -20,8 +20,8 @@ class ViewModel{
     var onDataUpdated: (() -> Void)?
     var onError: ((String) -> Void)?
     
-    // MARK: Private Data (only ViewModel can change)
     
+    // MARK: Private Data (only ViewModel can change)
     private var allBeaches: [WaterQuality] = []
     private var filteredBeaches: [WaterQuality] = []
     private var isSearching: Bool = false
@@ -29,7 +29,7 @@ class ViewModel{
     //MARK: - Computed Properties for ViewController to read
     var numberOfBeaches: Int{
         let count = isSearching ? filteredBeaches.count : allBeaches.count
-        print("DEBUG: numberOfBeaches = \(count) (isSearching: \(isSearching))")
+        //print("DEBUG: numberOfBeaches = \(count) (isSearching: \(isSearching))")
         return count
     }
     

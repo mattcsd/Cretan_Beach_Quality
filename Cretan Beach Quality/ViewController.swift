@@ -203,25 +203,26 @@ extension ViewController: UITableViewDelegate {
         
         let item = viewModel.beach(at: indexPath.row)
         
-        // Clean the beach name: remove "_" and extra text -> keep only first name
+        // clean the beach name, remove "_" and extra text, fianlly keep only first name
         var coastName = (item.coast ?? "")
             .components(separatedBy: "_")
             .first ?? ""
         coastName = coastName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let region = item.regionName
         
-        // Show loading spinner on the cell
+        // show loading spinner on the cell
         if let cell = tableView.cellForRow(at: indexPath) {
             let spinner = UIActivityIndicatorView(style: .medium)
             spinner.startAnimating()
             cell.accessoryView = spinner
         }
         
-        // Use GeocodingService to get coordinates
+        // GeocodingService to fetxh coordinates
         GeocodingService.shared.geocode(beachName: coastName, region: region) { [weak self] result in
             guard let self = self else { return }
             
-            DispatchQueue.main.async {
+            //already in main thread, wrapped in geocodingservice
+            //DispatchQueue.main.async {
                 // Remove spinner from cell
                 if let cell = tableView.cellForRow(at: indexPath) {
                     cell.accessoryView = nil
@@ -229,7 +230,8 @@ extension ViewController: UITableViewDelegate {
                 
                 switch result {
                 case .success(let (latitude, longitude)):
-                    // Create ViewModel with valid coordinates
+                    // create ViewModel with valid coordinates
+                    // i dont think this can happen another way? seems alittle odd to be done in the network call.
                     let viewModel = DetailViewModel(beachItem: item, latitude: latitude, longitude: longitude)
                     let detailVC = DetailViewController()
                     detailVC.viewModel = viewModel
@@ -237,23 +239,15 @@ extension ViewController: UITableViewDelegate {
                     
                 case .failure(let error):
                     print("Geocoding failed: \(error)")
-                    // Still show detail, but without coordinates (weather will be unavailable)
+                    // still show detail, (weather will be unavailable)
                     let viewModel = DetailViewModel(beachItem: item, latitude: nil, longitude: nil)
                     let detailVC = DetailViewController()
                     detailVC.viewModel = viewModel
                     self.navigationController?.pushViewController(detailVC, animated: true)
                 }
-            }
+            //}
         }
         
-    }
-}
-
-// helper extension for rounding
-extension Double {
-    func rounded(to places: Int) -> Double {
-        let divisor = pow(10.0, Double(places))
-        return (self * divisor).rounded() / divisor
     }
 }
 

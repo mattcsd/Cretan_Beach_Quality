@@ -10,7 +10,7 @@ import UIKit
 class DetailViewController: UIViewController {
 
     // MARK: - ViewModel (injected from ViewController)
-    var viewModel: DetailViewModel! // the ! is needed?
+    var viewModel: DetailViewModel! // the ! is needed? yes compiler error
     
     private let scrollView = UIScrollView()
     private let contentView = UIView()
@@ -26,6 +26,7 @@ class DetailViewController: UIViewController {
         return label
     }()
     
+    // MARK: UI elements
     private let coastLabel = UILabel()
     private let regionLabel = UILabel()
     private let ecoliLabel = UILabel()
@@ -47,7 +48,8 @@ class DetailViewController: UIViewController {
         dailyTableView.invalidateIntrinsicContentSize()
     }
     
-    // MARK: setup
+    
+    // MARK: callback setup
     private func setupCallbacks(){
         viewModel.onWeatherLoaded = {[weak self] in
             guard let self = self else {return }

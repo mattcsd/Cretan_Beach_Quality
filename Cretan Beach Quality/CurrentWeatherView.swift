@@ -10,6 +10,7 @@ import UIKit
 
 class CurrentWeatherView: UIView {
     
+    //MARK: UI elemetns
     // container to fit everything
     private let containerView: UIView = {
         let view = UIView()
@@ -43,6 +44,7 @@ class CurrentWeatherView: UIView {
     private let timeLabel = UILabel()
     
     
+    //MARK: Actions
     // swift requires both initializers when you subclass UIView
     override init(frame: CGRect) {
         super.init(frame: frame)
