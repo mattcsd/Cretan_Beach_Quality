@@ -52,7 +52,9 @@ class DetailViewModel{
         onLoadingChanged?(true)
         
         NetworkManager.shared.fetchWeather(latitude: lat, longitude: lon) { [weak self] result in
-            DispatchQueue.main.async {
+            // bgainei giati hdh exei mpei sto main apo to networkmanager.fetch??
+            
+            //DispatchQueue.main.async {
                 self?.onLoadingChanged?(false)
                 switch result {
                 case .success(let weather):
@@ -61,7 +63,7 @@ class DetailViewModel{
                     self?.onWeatherLoaded?()
                 case .failure(let error):
                     self?.onError?(error.localizedDescription)
-                }
+              //  }
             }
         }
     }
@@ -92,6 +94,4 @@ class DetailViewModel{
         }
         return "Date: \(dateString)"
     }
-    
-                                
 }

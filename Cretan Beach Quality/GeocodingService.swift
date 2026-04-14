@@ -24,7 +24,7 @@ class GeocodingService {
             return
         }
         
-        // Use the existing GeoNamesSearchResponse model
+        // use the existing GeoNamesSearchResponse model
         NetworkManager.shared.fetch(from: url) { (result: Result<GeoNamesSearchResponse, Error>) in
             switch result {
             case .success(let response):

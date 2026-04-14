@@ -119,28 +119,6 @@ final class NetworkManager{
             
         }
     }
-    /*
-    func fetchCoordinates(for place: String, completion: @escaping (Result<GeocodingResult, Error>) -> Void){
-        
-        let query = place.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        
-        let urlString = "https://geocoding-api.open-meteo.com/v1/search?name=\(query)&count=1"
-        
-        guard let url = URL(string: urlString) else {
-            completion(.failure(NSError(domain: "Bad URL", code: -1)))
-            return
-        }
-        
-        fetch(from: url) {(result: Result<GeocodingResponse, Error>) in
-            
-            switch result{
-            case .success(let response):
-                print("HEREEEE \(response.results)")
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }*/
 }
 
 
