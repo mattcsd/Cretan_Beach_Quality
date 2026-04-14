@@ -12,6 +12,8 @@ final class NetworkManager{
     static let shared = NetworkManager()
     private init(){}
     
+    // async await calls.
+    
     func fetch<T: Decodable>(
         from url:URL,
         completion: @escaping (Result<T, Error>) -> Void){

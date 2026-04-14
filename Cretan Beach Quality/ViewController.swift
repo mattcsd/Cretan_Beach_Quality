@@ -7,11 +7,15 @@
 
 import UIKit
 
-class ViewController: UIViewController {
-    let GEONAMES_USERNAME = "mattsik"
+// Create a ViewModel instance
+//not here //let viewModel = ViewModel()
 
-    //MARK: UI Components
+class ViewController: UIViewController {
+    // should i create the viewmodel instance here?
+    private let viewModel = ViewModel()
     
+    
+    //MARK: UI Components
     private let tableView: UITableView = {
         let table = UITableView()
         table.translatesAutoresizingMaskIntoConstraints = false
@@ -46,19 +50,9 @@ class ViewController: UIViewController {
     
     //MARK: - Search Bar
     private let searchController = UISearchController(searchResultsController: nil)
-    private var filteredData: [WaterQuality] = []
-    private var isSearching = false
     
-    // MARK: - REfresh
+    // MARK: - Refresh
     private let refreshControl = UIRefreshControl()
-    
-    @objc private func refreshData(){
-        fetchData()
-    }
-    
-    // MARK: - Data
-    private var waterQualityData: [WaterQuality] = []
-    
     
     //MARK: - Lifecycle
     override func viewDidLoad() {
@@ -66,16 +60,56 @@ class ViewController: UIViewController {
         title = "Beach Water Quality"
         view.backgroundColor = .systemBackground
         
+        //helpers to prepare the communciation with viewmodel
+        setupSearchController()
+        setupCallbacks()
+        
+        setupUI()
+        setupRefreshControl()
+        viewModel.loadBeaches()
+    }
+    
+    
+    // MARK: - Setup Methods
+    private func setupSearchController() {
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search by beach name"
-        
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true
-
-        setupUI()
-        fetchData()
+    }
+    
+    private func setupCallbacks() {
+        // callback for loading state
+        viewModel.onLoadingChanged = { [weak self] isLoading in
+            guard let self = self else { return }
+            if isLoading {
+                // If refresh control is already refreshing, don't start the normal spinner
+                if !self.refreshControl.isRefreshing {
+                    self.activityIndicator.startAnimating()
+                }
+            } else {
+                self.activityIndicator.stopAnimating()
+                self.refreshControl.endRefreshing()
+            }
+        }
+        
+        // callback for data update (success case)
+        viewModel.onDataUpdated = { [weak self] in
+            guard let self = self else { return }
+            print("DEBUG: onDataUpdated called")
+            self.tableView.reloadData()
+            self.tableView.isHidden = false
+            self.errorLabel.isHidden = true
+            self.retryButton.isHidden = true
+        }
+        
+        // callback for error
+        viewModel.onError = { [weak self] errorMessage in
+            guard let self = self else { return }
+            self.showError(errorMessage)
+        }
     }
     
     //MARK: - UI Setup
@@ -85,15 +119,10 @@ class ViewController: UIViewController {
         view.addSubview(errorLabel)
         view.addSubview(retryButton)
         
+        
         tableView.delegate = self
         tableView.dataSource = self
-        
-        //for the refresh
-        tableView.refreshControl = refreshControl
-        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
-        
 
-        
         // SEtup button action
         retryButton.addTarget(self, action: #selector(retryButtonTapped), for: .touchUpInside)
         
@@ -116,103 +145,18 @@ class ViewController: UIViewController {
         ])
     }
     
-    //MARK - Network Call
-    private func fetchData() {
-        if !refreshControl.isRefreshing{
-            activityIndicator.startAnimating()
-        }
-        // Show loading
-        activityIndicator.startAnimating()
-        errorLabel.isHidden = true
-        retryButton.isHidden = true
-
-        let urlString = "https://data.gov.gr/api/v1/query/apdkriti-swimwater"
-        
-        guard let url = URL(string: urlString) else {
-            showError("Invalid URL")
-            return
-        }
-        print("Fetching data...")
-        
-        
-        //REFINEMENT 2
-        /*let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-        
-            DispatchQueue.main.async{
-                guard let self = self else { return }
-                
-                self.activityIndicator.stopAnimating()
-                self.refreshControl.endRefreshing()
-                
-                //Handle error
-                if let error = error {
-                    print("Network error: \(error)")
-                    self.showError("Network error: \(error.localizedDescription)")
-                    return
-                }
-                
-                //Check response
-                if let httpResponse = response as? HTTPURLResponse{
-                    print("Status code:\(httpResponse.statusCode)")
-                    // Check for non-200 status codes
-                     guard (200...299).contains(httpResponse.statusCode) else {
-                         self.showError("Server error: \(httpResponse.statusCode)")
-                         return
-                     }
-                }
-                
-                // Check data
-                guard let data = data else {
-                    print("No data received")
-                    self.showError("No data received")
-                    return
-                }
-                
-                print("Data size: \(data.count) bytes")
-                
-                // Try to decode
-                
-                do {
-                    let decoder = JSONDecoder()
-                    let decodedData = try decoder.decode([WaterQuality].self, from: data)
-                    
-                    print("Success! Decoded \(decodedData.count) items")
-                    if let first = decodedData.first{
-                        print("First item: \(first.coast) in \(first.perunit) and \(first.sampleTimestamp)") 
-                    }
-                    
-                    self.waterQualityData = decodedData
-                    self.tableView.reloadData()
-                    self.tableView.isHidden = false
-                } catch{
-                    print("Decoding error: \(error)")
-                    self.showError("Failed to parse data: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-        }
-        task.resume()*/
-                    // weak for not retaining cyle if user closes screen.
-        NetworkManager.shared.fetch(from: url){ [weak self] (result: Result<[WaterQuality], Error>) in
-            guard let self = self else{return}
-            self.activityIndicator.stopAnimating()
-            
-            switch result{
-            case .success(let data):
-                self.waterQualityData = data
-                self.tableView.reloadData()
-                self.tableView.isHidden = false
-            case .failure(let error):
-                self.showError(error.localizedDescription)
-            }
-            
-            
-        }
+    private func setupRefreshControl() {
+        tableView.refreshControl = refreshControl
+        refreshControl.addTarget(self, action: #selector(refreshData), for: .valueChanged)
     }
     
+    // MARK: - Actions
+    @objc private func refreshData() {
+        viewModel.refreshBeaches()
+    }
+
     @objc private func retryButtonTapped(){
-        fetchData()
+        viewModel.loadBeaches()
     }
     
     private func showError(_ message: String){
@@ -226,15 +170,20 @@ class ViewController: UIViewController {
 //MARK: - UITableViewDataSource
 extension ViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return isSearching ? filteredData.count : waterQualityData.count
+        //ask the viewmodel to return the number of beaches
+        return viewModel.numberOfBeaches
     }
+    
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
+        //again ask viewmodel for the particular row-beach
+        let item = viewModel.beach(at: indexPath.row)
 
-        //Configure cell
+        //configure cell
         var config = cell.defaultContentConfiguration()
         config.text = item.coast ?? "Unknown"
+        // modify here to add/remove data
         config.secondaryText =
         "\(item.perunit ?? "N/A") | E. coli: \(item.ecoli ?? "N/A") | Enterococci: \(item.intenterococci ?? "N/A")"
         
@@ -244,97 +193,63 @@ extension ViewController: UITableViewDataSource {
         cell.accessoryType = .disclosureIndicator
         
         return cell
-        
     }
 }
 
 // MARK: - UITableViewDelegate
-
 extension ViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        let item = isSearching ? filteredData[indexPath.row] : waterQualityData[indexPath.row]
+        let item = viewModel.beach(at: indexPath.row)
         
-        // clean the beach name : remove "_" and extra text -> keep only first name
+        // Clean the beach name: remove "_" and extra text -> keep only first name
         var coastName = (item.coast ?? "")
             .components(separatedBy: "_")
             .first ?? ""
-        
-        coastName = coastName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        
+        coastName = coastName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         let region = item.regionName
-        let searchQuery = "\(coastName) \(region)"
-        print("Searching GeoNames for: \(searchQuery)")
         
-        // show loading indicator
+        // Show loading spinner on the cell
         if let cell = tableView.cellForRow(at: indexPath) {
             let spinner = UIActivityIndicatorView(style: .medium)
             spinner.startAnimating()
             cell.accessoryView = spinner
         }
-        // get the coordinates
-        NetworkManager.shared.fetchCoordinatesGeoNames(for: searchQuery,
-                                                       username: GEONAMES_USERNAME) { [weak self] geocodingResult in
+        
+        // Use GeocodingService to get coordinates
+        GeocodingService.shared.geocode(beachName: coastName, region: region) { [weak self] result in
             guard let self = self else { return }
             
             DispatchQueue.main.async {
+                // Remove spinner from cell
                 if let cell = tableView.cellForRow(at: indexPath) {
                     cell.accessoryView = nil
                 }
-            }
-            
-            switch geocodingResult {
-            case .success(let location):
-                //we got the coordinates
-                guard let lat = location.latitude, let lon = location.longitude else {
-                    //coordinates are invalid
-                    print("Invalid coordinates")
-                    self.navigateToDetail(with: item, latitude: nil, longitude: nil, weather: nil )
-                    return
-                }
                 
-                // found beach
-                print("BEACH FOUND \(location.name)")
-                print("Lat: \(location.latitude ?? 0), Lon: \(location.longitude ?? 0)") // not sure about this
-                
-                
-                NetworkManager.shared.fetchWeather(latitude: lat, longitude: lon) { [weak self] weatherResult in
-                    guard let self else { return }
+                switch result {
+                case .success(let (latitude, longitude)):
+                    // Create ViewModel with valid coordinates
+                    let viewModel = DetailViewModel(beachItem: item, latitude: latitude, longitude: longitude)
+                    let detailVC = DetailViewController()
+                    detailVC.viewModel = viewModel
+                    self.navigationController?.pushViewController(detailVC, animated: true)
                     
-                    DispatchQueue.main.async{
-                        switch weatherResult {
-                        case .success(let weather):
-                            print("WEATHER FOUND \(weather.current.temperature)C")
-                            self.navigateToDetail(with: item, latitude: lat, longitude: lon, weather: weather)
-                        case .failure(let error):
-                            //weather fetch error, still show detail with coordinates
-                            self.navigateToDetail(with: item, latitude: lat, longitude: lon, weather: nil)
-                        }
-                    }
+                case .failure(let error):
+                    print("Geocoding failed: \(error)")
+                    // Still show detail, but without coordinates (weather will be unavailable)
+                    let viewModel = DetailViewModel(beachItem: item, latitude: nil, longitude: nil)
+                    let detailVC = DetailViewController()
+                    detailVC.viewModel = viewModel
+                    self.navigationController?.pushViewController(detailVC, animated: true)
                 }
-            case .failure(let error):
-                print ("Geocoding failed: \(error)")
-                self.navigateToDetail(with: item, latitude: nil, longitude: nil, weather: nil)
             }
         }
+        
     }
-    
-    private func navigateToDetail(with item: WaterQuality, latitude: Double?, longitude: Double?, weather: WeatherResponse?){
-        let vc = DetailViewController()
-        vc.item = item
-        vc.latitude = latitude
-        vc.longitude = longitude
-        vc.weatherData = weather
-        navigationController?.pushViewController(vc, animated: true)
-    }
-
 }
 
-
-
-// Helper extension for rounding
+// helper extension for rounding
 extension Double {
     func rounded(to places: Int) -> Double {
         let divisor = pow(10.0, Double(places))
@@ -344,19 +259,7 @@ extension Double {
 
 extension ViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
-        let searchText = searchController.searchBar.text ?? ""
-
-        if searchText.isEmpty {
-            isSearching = false
-            filteredData = []
-        } else {
-            isSearching = true
-            filteredData = waterQualityData.filter { item in
-                (item.coast ?? "").lowercased().contains(searchText.lowercased()) ||
-                (item.perunit ?? "").lowercased().contains(searchText.lowercased())
-            }
-        }
-
-        tableView.reloadData()
+        let query = searchController.searchBar.text ?? ""
+        viewModel.searchBeaches(with: query)
     }
 }

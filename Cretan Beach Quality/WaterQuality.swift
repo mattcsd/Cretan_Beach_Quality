@@ -2,16 +2,9 @@
 //  WaterQuality.swift
 //  Cretan Beach Quality
 //
-//  Created by Admin on 24/3/26.
-//
-
-
-//
-//  WaterQuaity.swift
-//  Cretan Beach Quality
-//
 //  Created by Admin on 23/3/26.
 //
+
 
 import Foundation
 

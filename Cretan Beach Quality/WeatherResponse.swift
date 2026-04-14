@@ -59,7 +59,7 @@ struct CurrentWeather: Decodable {
         }
     }
     
-    // Image name based on weather code (using SF Symbols)
+    // image name based on weather code with SF Symbols
     var imageName: String {
         switch weatherCode {
         case 0...3:
@@ -87,7 +87,7 @@ struct HourlyWeather: Decodable {
         case weatherCode = "weather_code"
     }
     
-    // Get hours from current time up to 23:00 (or next few hours)
+    //get hours from current time  //not used in the end
     func getHourlyForecast(upTo limit: Int = 10) -> [HourlyForecast] {
         var forecasts: [HourlyForecast] = []
         
@@ -103,7 +103,7 @@ struct HourlyWeather: Decodable {
             if let date = formatter.date(from: timeString) {
                 let hour = calendar.component(.hour, from: date)
                 
-                // Show all hours from current hour onward (up to limit)
+                //show all hours from current hour onward, with limit
                 if hour >= currentHour && forecasts.count < limit {
                     let outputFormatter = DateFormatter()
                     outputFormatter.dateFormat = "HH:mm"
@@ -120,7 +120,7 @@ struct HourlyWeather: Decodable {
         }
         
         if forecasts.isEmpty && time.count > 0 {
-            print("⚠️ No remaining hours today, showing first available hours")
+            print("No remaining hours today, showing first available hours")
             for i in 0..<min(time.count, limit) {
                 let timeString = time[i]
                 let formatter = DateFormatter()

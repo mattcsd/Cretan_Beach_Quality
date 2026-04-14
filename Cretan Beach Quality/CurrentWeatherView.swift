@@ -10,6 +10,7 @@ import UIKit
 
 class CurrentWeatherView: UIView {
     
+    // container to fit everything
     private let containerView: UIView = {
         let view = UIView()
         view.layer.cornerRadius = 12
@@ -17,7 +18,7 @@ class CurrentWeatherView: UIView {
         return view
     }()
     
-    //add a title
+    //add a title for the container
     private let titleLabel:UILabel = {
         let label = UILabel()
         label.text = "Current Weather"
@@ -26,14 +27,23 @@ class CurrentWeatherView: UIView {
         return label
     }()
     
+    //add an activity indicator
+    private let loadingIndicator: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.hidesWhenStopped = true
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        return spinner
+    }()
     
-    
+    // misc elements needed
     private let weatherIcon = UIImageView()
     private let temperatureLabel = UILabel()
     private let windSpeedLabel = UILabel()
     private let windDirectionArrow = UIImageView()
     private let timeLabel = UILabel()
     
+    
+    // swift requires both initializers when you subclass UIView
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -43,11 +53,38 @@ class CurrentWeatherView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    func showLoading() {
+        weatherIcon.isHidden = true
+        temperatureLabel.isHidden = true
+        windSpeedLabel.isHidden = true
+        windDirectionArrow.isHidden = true
+        timeLabel.isHidden = true
+        loadingIndicator.startAnimating()
+    }
+
+    func hideLoading() {
+        loadingIndicator.stopAnimating()
+        weatherIcon.isHidden = false
+        temperatureLabel.isHidden = false
+        windSpeedLabel.isHidden = false
+        windDirectionArrow.isHidden = false
+        timeLabel.isHidden = false
+    }
+
+    func showErrorMessage(_ message: String) {
+        hideLoading()
+        timeLabel.text = message
+        timeLabel.isHidden = false
+        // maybe hide other elements
+    }
+    
     private func setupUI() {
+        containerView.addSubview(loadingIndicator)
         addSubview(containerView)
         containerView.translatesAutoresizingMaskIntoConstraints = false
         
         [titleLabel, weatherIcon, temperatureLabel, windSpeedLabel, windDirectionArrow, timeLabel].forEach {
+            // using autolayout
             $0.translatesAutoresizingMaskIntoConstraints = false
             containerView.addSubview($0)
         }
@@ -97,6 +134,10 @@ class CurrentWeatherView: UIView {
             //time label
             timeLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -15),
             timeLabel.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -8),
+            
+            //loading indicator
+            loadingIndicator.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
         ])
     }
     
@@ -105,7 +146,9 @@ class CurrentWeatherView: UIView {
         
         containerView.backgroundColor = current.backgroundColor.withAlphaComponent(0.2)
         weatherIcon.image = UIImage(systemName: current.imageName)
+        
         temperatureLabel.text = "\(Int(current.temperature))°C"
+        
         windSpeedLabel.text = "Wind: \(Int(current.windSpeed)) km/h"
         
         let angle = CGFloat(current.windDirection) * .pi / 180

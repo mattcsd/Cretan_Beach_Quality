@@ -5,7 +5,6 @@
 //  Created by Admin on 2/4/26.
 //
 
-
 import UIKit
 
 class HourlyForecastView: UIView {
@@ -17,6 +16,8 @@ class HourlyForecastView: UIView {
     }()
     
     private let contentView = UIView()
+    
+    // stack for the days
     private let stackView: UIStackView = {
         let stack = UIStackView()
         stack.axis = .horizontal

@@ -9,17 +9,12 @@ import UIKit
 
 class DetailViewController: UIViewController {
 
-    var item: WaterQuality? //to hold the selected data
-    var weatherData: WeatherResponse?
-    
-    var latitude: Double?
-    var longitude: Double?
+    // MARK: - ViewModel (injected from ViewController)
+    var viewModel: DetailViewModel! // the ! is needed?
     
     private let scrollView = UIScrollView()
     private let contentView = UIView()
-    
-    private var dailyForecasts: [DailyForecast] = []
-    private var expandedIndex: Int?
+    private let currentWeatherView = CurrentWeatherView()
     private var dailyTableView = SelfSizingTableView()
     
     
@@ -36,49 +31,55 @@ class DetailViewController: UIViewController {
     private let ecoliLabel = UILabel()
     private let enterococciLabel = UILabel()
     private let dateLabel = UILabel()
-    
-    private let currentWeatherView = CurrentWeatherView()
-    //private let loadingIndicator = UIActivityIndicatorView(style: .medium)
-
+       
+    //MARK: Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         
         setupUI()
+        setupCallbacks()
         configureWaterQuality()
-        
-        if let weather = weatherData {
-            currentWeatherView.configure(with: weather)
-            self.dailyForecasts = weather.getDailyForecasts()
-            setupDailyForecastTable()
-            dailyTableView.reloadData()
-        } else if let lat = latitude, let lon = longitude {
-            NetworkManager.shared.fetchWeather(latitude: lat, longitude: lon) { [weak self] result in
-                guard let self = self else { return }
-                
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let weather):
-                        print("Weather loaded: \(weather.current.temperature)°C")
-                        self.weatherData = weather
-                        self.currentWeatherView.configure(with: weather)
-                        self.dailyForecasts = weather.getDailyForecasts()
-                        self.setupDailyForecastTable()
-                        self.dailyTableView.reloadData()
-                        
-                    case .failure(let error):
-                        print("Error fetching weather: \(error)")
-                    }
-                }
+        viewModel.loadWeather()
+    }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // force the table to update its height based on content
+        dailyTableView.invalidateIntrinsicContentSize()
+    }
+    
+    // MARK: setup
+    private func setupCallbacks(){
+        viewModel.onWeatherLoaded = {[weak self] in
+            guard let self = self else {return }
+            
+            //update current weather view
+            if let weather = self.viewModel.weatherData {
+                self.currentWeatherView.configure(with: weather)
             }
-        } else {
-            // show error state for current weather
+            //reload the forecast table
+            self.dailyTableView.reloadData()
+        }
+        
+        viewModel.onError = { [weak self] errorMessage in
+            print("Weather error: \(errorMessage)")
+            // show simple error label inside the weather view
             let errorLabel = UILabel()
             errorLabel.text = "Weather data unavailable"
             errorLabel.textColor = .secondaryLabel
             errorLabel.textAlignment = .center
-            currentWeatherView.addSubview(errorLabel)
+            self?.currentWeatherView.addSubview(errorLabel)
+            self?.currentWeatherView.showErrorMessage(errorMessage)
+        }
+        
+        viewModel.onLoadingChanged = { [weak self] isLoading in
+          if isLoading {
+              self?.currentWeatherView.showLoading()
+          } else {
+              self?.currentWeatherView.hideLoading()
+          }
         }
     }
+    
     
     private func setupDailyForecastTable() {
         dailyTableView.delegate = self
@@ -88,63 +89,16 @@ class DetailViewController: UIViewController {
         dailyTableView.backgroundColor = .clear
         dailyTableView.isScrollEnabled = false
         
-        // Enable automatic row height
+        // enable automatic row height
         dailyTableView.rowHeight = UITableView.automaticDimension
         dailyTableView.estimatedRowHeight = 70
     }
-    
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        // force the table to update its height based on content
-        dailyTableView.invalidateIntrinsicContentSize()
-    }
-    
-    /*private func toggleExpanded(at index: Int) {
-        if expandedIndex == index {
-            expandedIndex = nil
-        } else {
-            expandedIndex = index
-        }
-        
-        // reload the row to animate height change
-        dailyTableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .automatic)
-        
-        //force the table to update its intrinsic content size
-        DispatchQueue.main.async {
-            self.dailyTableView.invalidateIntrinsicContentSize()
-            self.view.layoutIfNeeded()
-        }
-    }*/
-    private func toggleExpanded(at index: Int) {
-        let oldIndex = expandedIndex
-        
-        if expandedIndex == index {
-            expandedIndex = nil
-        } else {
-            expandedIndex = index
-        }
-        
-        // Smoothly update the heights without "restarting" the cell instances
-        dailyTableView.performBatchUpdates({
-            var rowsToReload = [IndexPath(row: index, section: 0)]
-            if let old = oldIndex, old != index {
-                rowsToReload.append(IndexPath(row: old, section: 0))
-            }
-            // This is better than reloadRows for expanded states
-            dailyTableView.reloadRows(at: rowsToReload, with: .fade)
-        }, completion: { _ in
-            // Keep the table height in sync with the ScrollView
-            self.dailyTableView.invalidateIntrinsicContentSize()
-            self.view.layoutIfNeeded()
-        })
-    }
-    
-    private func setupUI(){
-        view.backgroundColor = .white // or .background
+
+    private func setupUI() {
+        view.backgroundColor = .white
         
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
-        
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
         
@@ -161,7 +115,7 @@ class DetailViewController: UIViewController {
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
         
-        // configure labels
+        // Style labels
         coastLabel.font = .systemFont(ofSize: 18, weight: .semibold)
         regionLabel.font = .systemFont(ofSize: 16)
         ecoliLabel.font = .systemFont(ofSize: 16)
@@ -169,62 +123,60 @@ class DetailViewController: UIViewController {
         dateLabel.font = .systemFont(ofSize: 14)
         dateLabel.textColor = .secondaryLabel
         
-        // create water qaulity stack
+        // Water quality stack
         let waterQualityStack = UIStackView(arrangedSubviews: [
-            waterQualityTitle,
-            coastLabel,
-            regionLabel,
-            ecoliLabel,
-            enterococciLabel,
-            dateLabel
+            waterQualityTitle, coastLabel, regionLabel, ecoliLabel, enterococciLabel, dateLabel
         ])
         waterQualityStack.axis = .vertical
         waterQualityStack.spacing = 8
         
-        // crete weather section stack
-        let weatherStack = UIStackView(arrangedSubviews: [
-            currentWeatherView
-        ])
-    
+        // Weather stack
+        let weatherStack = UIStackView(arrangedSubviews: [currentWeatherView])
         weatherStack.axis = .vertical
         weatherStack.spacing = 12
         
-        // create daily stack with title
+        // Daily forecast title
         let dailyTitleLabel = UILabel()
         dailyTitleLabel.text = "7-Day Forecast"
         dailyTitleLabel.font = .boldSystemFont(ofSize: 18)
-
-        let dailyStack = UIStackView(arrangedSubviews: [
-            dailyTitleLabel,
-            dailyTableView
-        ])
+        
+        // Setup table view
+        dailyTableView.delegate = self
+        dailyTableView.dataSource = self
+        dailyTableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
+        dailyTableView.separatorStyle = .none
+        dailyTableView.backgroundColor = .clear
+        dailyTableView.isScrollEnabled = false
+        dailyTableView.rowHeight = UITableView.automaticDimension
+        dailyTableView.estimatedRowHeight = 70
+        let dailyStack = UIStackView(arrangedSubviews: [dailyTitleLabel, dailyTableView])
         dailyStack.axis = .vertical
         dailyStack.spacing = 12
-
-        // main stack
+        
+        // Main stack
         let mainStack = UIStackView(arrangedSubviews: [
             waterQualityStack,
             createDivider(),
             weatherStack,
-            createDivider(),
             dailyStack
         ])
-        
         mainStack.axis = .vertical
         mainStack.spacing = 20
         mainStack.translatesAutoresizingMaskIntoConstraints = false
-        
         contentView.addSubview(mainStack)
         
         NSLayoutConstraint.activate([
             mainStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
             mainStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
             mainStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            mainStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+            mainStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
-    
     }
     
+    
+    
+    
+    // simple gray divider
     private func createDivider () -> UIView {
         let divider = UIView()
         divider.heightAnchor.constraint(equalToConstant: 1).isActive = true
@@ -232,55 +184,21 @@ class DetailViewController: UIViewController {
         return divider
     }
     
-    private func configureWaterQuality(){
-        guard let item = item else { return }
-        coastLabel.text = "Coast: \(item.coast ?? "Unknown")"
-        regionLabel.text = "Region: \(item.perunit ?? "N/A")"
-        ecoliLabel.text = "E. coli: \(item.ecoli ?? "N/A")"
-        enterococciLabel.text = "Enterococci: \(item.intenterococci ?? "N/A")"
-        
-        // date formatting einai se iso kai mporw na to customarw poly
-        // Format the ISO 8601 date string to a human-readable format
-        if let dateString = item.sampleTimestamp, !dateString.isEmpty {
-            // Create a formatter to parse the input date string
-            let inputFormatter = DateFormatter()
-            inputFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-            inputFormatter.locale = Locale(identifier: "en_US_POSIX")
-            inputFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-            
-            if let date = inputFormatter.date(from: dateString) {
-                // create a formatter for the output
-                let outputFormatter = DateFormatter()
-                outputFormatter.dateFormat = "MMM d, yyyy 'at' HH:mm:ss"
-                outputFormatter.locale = Locale(identifier: "en_US")
-                
-                dateLabel.text = "Date: \(outputFormatter.string(from: date))"
-            } else {
-                // if parsing fails, show the original string
-                dateLabel.text = "Date: \(dateString)"
-            }
-        } else {
-            dateLabel.text = "Date: N/A"
-        }
+    
+    //data manipulated in DetailViewModel
+    private func configureWaterQuality() {
+        coastLabel.text = "Coast: \(viewModel.coastName)"
+        regionLabel.text = "Region: \(viewModel.regionName)"
+        ecoliLabel.text = viewModel.ecoliText
+        enterococciLabel.text = viewModel.enterococciText
+        dateLabel.text = viewModel.formattedDate
     }
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
-    }
-    */
-
 }
 // MARK: - UITableView Delegate & DataSource
 extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        print("DEBUG: [Table Count] System asking for row count. Returning: \(dailyForecasts.count)")
-        return dailyForecasts.count
+        return viewModel.numberOfForecastDays
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -288,8 +206,8 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
             return UITableViewCell()
         }
         
-        let forecast = dailyForecasts[indexPath.row]
-        let isExpanded = expandedIndex == indexPath.row
+        let forecast = viewModel.forecast(at: indexPath.row)
+        let isExpanded = viewModel.isExpanded(at: indexPath.row)
         cell.configure(with: forecast, isExpanded: isExpanded)
         cell.delegate = self
         
@@ -301,17 +219,17 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     }
 
     func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
-        return expandedIndex == indexPath.row ? 220 : 70
+        return viewModel.isExpanded(at: indexPath.row) ? 220 : 70
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         print("--- DEBUG START: Row Clicked ---")
         print("DEBUG: [Click] User tapped row: \(indexPath.row)")
-        toggleExpanded(at: indexPath.row)
+        viewModel.toggleExpanded(at: indexPath.row)
         //tableView.reloadRows(at: [indexPath], with: .automatic)
         //tableView.beginUpdates()
         //tableView.endUpdates()
-            
+        tableView.reloadRows(at: [indexPath], with: .fade)
         print("--- DEBUG END ---")
         
     }
@@ -322,20 +240,33 @@ extension DetailViewController: DailyForecastCellDelegate {
 
     func didTapExpandButton(for cell: DailyForecastCell) {
         guard let indexPath = dailyTableView.indexPath(for: cell) else { return }
-        toggleExpanded(at: indexPath.row)
+        viewModel.toggleExpanded(at: indexPath.row)
         dailyTableView.reloadRows(at: [indexPath], with: .automatic)
     }
 }
 
 // MARK: - Self-sizing UITableView
-// UITableView has no intrinsicContentSize by default, so inside a UIStackView
-// it collapses to zero height. This subclass fixes that by reporting contentSize.
+
+// A UITableView that reports its contentSize as its intrinsicContentSize.
+
+// Standard UITableView has no intrinsicContentSize, which causes problems when
+// placed inside a UIStackView - the stack view collapses the table to zero height.
+
+//This subclass overrides intrinsicContentSize to return the actual content height,
+// allowing the table to properly size itself within a stack view while still
+// supporting dynamic cell heights (like expanded/collapsed forecast cells).
+
 private class SelfSizingTableView: UITableView {
     override var contentSize: CGSize {
-        didSet { invalidateIntrinsicContentSize() }
+        didSet {
+            // every time the content size changes,cells are added/removed/expanded
+            // tell Auto -ayout that intrinsic size has changed
+            invalidateIntrinsicContentSize() }
     }
     override var intrinsicContentSize: CGSize {
+        //ensure layout is up to date before calculating height
         layoutIfNeeded()
+        //return the current content height, but no intrinsic width constraints will do that
         return CGSize(width: UIView.noIntrinsicMetric, height: contentSize.height)
     }
 }

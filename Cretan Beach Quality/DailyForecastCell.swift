@@ -8,12 +8,12 @@
 
 import UIKit
 
+// listener - "messenger-ballboy" if expanded
 protocol DailyForecastCellDelegate: AnyObject {
     func didTapExpandButton(for cell: DailyForecastCell)
 }
 
 class DailyForecastCell: UITableViewCell {
-    
     static let identifier = "DailyForecastCell"
     
     weak var delegate: DailyForecastCellDelegate?
@@ -21,6 +21,7 @@ class DailyForecastCell: UITableViewCell {
     private var hourlyForecastView: HourlyForecastView?
     private var isExpanded = false
     
+    // container to fill days in
     private let containerView: UIView = {
         let view = UIView()
         view.backgroundColor = .systemGray6
@@ -28,6 +29,7 @@ class DailyForecastCell: UITableViewCell {
         return view
     }()
     
+    // misc elements for EACH day
     private let weatherIcon = UIImageView()
     private let dayLabel = UILabel()
     private let tempLabel = UILabel()
@@ -51,6 +53,7 @@ class DailyForecastCell: UITableViewCell {
         containerView.translatesAutoresizingMaskIntoConstraints = false
         
         [weatherIcon, dayLabel, tempLabel, windLabel, expandButton].forEach {
+            // again using auto layout
             $0.translatesAutoresizingMaskIntoConstraints = false
             containerView.addSubview($0)
         }
@@ -58,7 +61,7 @@ class DailyForecastCell: UITableViewCell {
         weatherIcon.contentMode = .scaleAspectFit
         weatherIcon.tintColor = .label
         
-        // make day label because of overlapping
+        // make day label smaller because of overlapping
         dayLabel.font = .systemFont(ofSize: 14, weight: .semibold)
         dayLabel.numberOfLines = 1
         dayLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -102,10 +105,10 @@ class DailyForecastCell: UITableViewCell {
         ])
     }
     
+    // listener for expand click
     @objc private func expandButtonTapped() {
         delegate?.didTapExpandButton(for: self)
     }
-    
     
     func configure(with forecast: DailyForecast, isExpanded: Bool) {
         self.isExpanded = isExpanded
@@ -120,10 +123,11 @@ class DailyForecastCell: UITableViewCell {
             if hourlyForecastView == nil {
                 hourlyForecastView = HourlyForecastView()
                 hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
-                containerView.addSubview(hourlyForecastView!)
+                
+                containerView.addSubview(hourlyForecastView!) // maybe handle this force unwrap differently, maybe with if let view = hourlyForecastView
                 
                 let bottomAnchor = hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
-                bottomAnchor.priority = UILayoutPriority(999)
+                bottomAnchor.priority = UILayoutPriority(999) // meaning almost required, but can break if necessary
                 
                 NSLayoutConstraint.activate([
                     hourlyForecastView!.topAnchor.constraint(equalTo: weatherIcon.bottomAnchor, constant: 12),
@@ -135,12 +139,14 @@ class DailyForecastCell: UITableViewCell {
             hourlyForecastView?.configure(with: forecast.hourlyForecasts, for: forecast.date)
             hourlyForecastView?.isHidden = false
         } else {
+            //BATCH UPDATE
+            //hourlyForecastView?.isHidden = true // messes up the view. afinei keno to expanded hourly
+            //temp fix
             hourlyForecastView?.removeFromSuperview()
-            //hourlyForecastView?.isHidden = true
-            hourlyForecastView = nil // keeping memory clear.
+            hourlyForecastView = nil // keeping memory clear. not efficient though
         }
         
-        // Force layout update
+        //force layout update
         setNeedsLayout()
         layoutIfNeeded()
     }
