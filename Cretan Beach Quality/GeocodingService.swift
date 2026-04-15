@@ -27,6 +27,7 @@ class GeocodingService {
         // use the existing GeoNamesSearchResponse model
         NetworkManager.shared.fetch(from: url) { (result: Result<GeoNamesSearchResponse, Error>) in
             switch result {
+                //no need for dispatch as it inherits from netwman.fetch
             case .success(let response):
                 guard let location = response.geonames?.first,
                       let lat = location.latitude,

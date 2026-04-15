@@ -7,13 +7,8 @@
 
 import UIKit
 
-// Create a ViewModel instance
-//not here //let viewModel = ViewModel()
-
 class ViewController: UIViewController {
-    // should i create the viewmodel instance here?
     private let viewModel = ViewModel()
-    
     
     //MARK: UI Components
     private let tableView: UITableView = {
@@ -85,7 +80,7 @@ class ViewController: UIViewController {
         viewModel.onLoadingChanged = { [weak self] isLoading in
             guard let self = self else { return }
             if isLoading {
-                // If refresh control is already refreshing, don't start the normal spinner
+                // if refresh control is already refreshing, don't start the normal spinner
                 if !self.refreshControl.isRefreshing {
                     self.activityIndicator.startAnimating()
                 }
@@ -96,6 +91,7 @@ class ViewController: UIViewController {
         }
         
         // callback for data update (success case)
+        //not keeping it open after the receive
         viewModel.onDataUpdated = { [weak self] in
             guard let self = self else { return }
             print("DEBUG: onDataUpdated called")
@@ -176,20 +172,21 @@ extension ViewController: UITableViewDataSource {
     
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        //dwse mou ena palio cell, if no reusable creates a new
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-        //again ask viewmodel for the particular row-beach
-        let item = viewModel.beach(at: indexPath.row)
-
-        //configure cell
-        var config = cell.defaultContentConfiguration()
-        config.text = item.coast ?? "Unknown"
-        // modify here to add/remove data
-        config.secondaryText =
-        "\(item.perunit ?? "N/A") | E. coli: \(item.ecoli ?? "N/A") | Enterococci: \(item.intenterococci ?? "N/A")"
+        //ftiakse ta texts sto viewmodel
+        let displayTitles = viewModel.displayTextForBeach(at: indexPath.row)
         
+        // creates modern iOS 14+, holds all the cell's content (text, font, color, etc
+        var config = cell.defaultContentConfiguration()
+        
+        config.text = displayTitles.title
+        config.secondaryText = displayTitles.subtitle
         config.secondaryTextProperties.numberOfLines = 2
         
+        //apply configurations
         cell.contentConfiguration = config
+        //bazei to gkribelaki sta deksia
         cell.accessoryType = .disclosureIndicator
         
         return cell
@@ -201,15 +198,6 @@ extension ViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         
-        let item = viewModel.beach(at: indexPath.row)
-        
-        // clean the beach name, remove "_" and extra text, fianlly keep only first name
-        var coastName = (item.coast ?? "")
-            .components(separatedBy: "_")
-            .first ?? ""
-        coastName = coastName.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        let region = item.regionName
-        
         // show loading spinner on the cell
         if let cell = tableView.cellForRow(at: indexPath) {
             let spinner = UIActivityIndicatorView(style: .medium)
@@ -217,37 +205,25 @@ extension ViewController: UITableViewDelegate {
             cell.accessoryView = spinner
         }
         
-        // GeocodingService to fetxh coordinates
-        GeocodingService.shared.geocode(beachName: coastName, region: region) { [weak self] result in
-            guard let self = self else { return }
+        viewModel.handleBeachSelection(at: indexPath.row) { [weak self] item, Blatitude, Blongitude in
+            guard let self = self else { return}
             
-            //already in main thread, wrapped in geocodingservice
-            //DispatchQueue.main.async {
-                // Remove spinner from cell
-                if let cell = tableView.cellForRow(at: indexPath) {
-                    cell.accessoryView = nil
-                }
-                
-                switch result {
-                case .success(let (latitude, longitude)):
-                    // create ViewModel with valid coordinates
-                    // i dont think this can happen another way? seems alittle odd to be done in the network call.
-                    let viewModel = DetailViewModel(beachItem: item, latitude: latitude, longitude: longitude)
-                    let detailVC = DetailViewController()
-                    detailVC.viewModel = viewModel
-                    self.navigationController?.pushViewController(detailVC, animated: true)
-                    
-                case .failure(let error):
-                    print("Geocoding failed: \(error)")
-                    // still show detail, (weather will be unavailable)
-                    let viewModel = DetailViewModel(beachItem: item, latitude: nil, longitude: nil)
-                    let detailVC = DetailViewController()
-                    detailVC.viewModel = viewModel
-                    self.navigationController?.pushViewController(detailVC, animated: true)
-                }
-            //}
+            //remove the spinner //dont need indexPath.row(?) no because i am asking for a full cell not just the int
+            if let cell = tableView.cellForRow(at: indexPath) {
+                //spinner.stopAnimating()
+                //spinner.removeFromSuperview()
+                cell.accessoryView = nil
+            }
+            //ayta kalo de tha htan na apone ViewModel? kalytera edw giati an ta paw sto model tha prepei na kserei o controller gia UIKit + ViewModel tha kserei yparksh ton Controller
+            let detailVC = DetailViewController()
+            let detViewModel = DetailViewModel(
+                beachItem: item,
+                latitude: Blatitude,
+                longitude: Blongitude
+            )
+            detailVC.viewModel = detViewModel
+            self.navigationController?.pushViewController(detailVC, animated: true)
         }
-        
     }
 }
 

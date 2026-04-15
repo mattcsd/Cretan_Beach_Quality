@@ -8,11 +8,12 @@
 import Foundation
 
 class DetailViewModel{
-    // MARK: - data(private
+    // MARK: - data(private set with init)
     private let beachItem: WaterQuality
-    private let latitude: Double?
-    private let longitude: Double?
+    private let beachLatitude: Double?
+    private let beachLongitude: Double?
     
+    // (set) used so only this instance can write to these, everyone can (get)
     private(set) var weatherData: WeatherResponse?
     private(set) var dailyForecasts: [DailyForecast] = []
     private(set) var expandedIndex: Int?
@@ -27,7 +28,7 @@ class DetailViewModel{
     var coastName: String { beachItem.coast ?? "Unknown"}
     var regionName: String { beachItem.regionName }
     var ecoliText: String { "E. coli: \(beachItem.ecoli ?? "N/A")" }
-    var enterococciText: String { "Enterococci: \(beachItem.intenterococci)" ?? "N/A"}
+    var enterococciText: String { "Enterococci: \(beachItem.intenterococci ?? "N/A")"}
     var formattedDate: String {formatDate(beachItem.sampleTimestamp)}
     
     var numberOfForecastDays: Int {dailyForecasts.count}
@@ -37,14 +38,13 @@ class DetailViewModel{
     //MARK: init
     init(beachItem: WaterQuality, latitude: Double?, longitude: Double?){
         self.beachItem = beachItem
-        self.latitude = latitude
-        self.longitude = longitude
+        self.beachLatitude = latitude
+        self.beachLongitude = longitude
     }
     
     // MARK: Actions
-    
     func loadWeather() {
-        guard let lat = latitude, let lon = longitude else {
+        guard let lat = beachLatitude, let lon = beachLongitude else {
             onError?("Location not available")
             return
         }
@@ -67,6 +67,29 @@ class DetailViewModel{
             }
         }
     }
+    
+    //MARK: async/await version==========================
+    func loadWeatherAsync() async {
+        guard let lat = beachLatitude, let lon = beachLongitude else {
+            onError?("Location not available")
+            return
+        }
+        print("ASYNc CALLED.detailviewModel")
+        onLoadingChanged?(true)
+        
+        do {
+            let weather = try await NetworkManager.shared.fetchWeatherAsync(latitude: lat, longitude: lon)
+            self.weatherData = weather
+            self.dailyForecasts = weather.getDailyForecasts()
+            self.onLoadingChanged?(false)
+            self.onWeatherLoaded?()
+            
+        } catch {
+            self.onLoadingChanged?(false)
+            self.onError?(error.localizedDescription)
+        }
+    }
+    //===================================end async/await
     
     func toggleExpanded(at index: Int) {
             if expandedIndex == index {

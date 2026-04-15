@@ -4,14 +4,11 @@
 //
 //  Created by Admin on 9/4/26.
 //
+
 import Foundation
 
-
-
-//extension ViewController { // sth prokeimenh isws de xreiazetai alla gia na mathoume an eixame panw apo ena View, pou exoume to DetailViewController
-// tha doyleye anti giua 2 files tade1_ViewModel, tade2_ViewModel(?) nomizw nai.
-    
 //not yet, swiftUI //@Observable
+//combine, codeco(vpn)
 
 class ViewModel{
     // slot to inform controller that activityIndicator should be changed
@@ -20,16 +17,15 @@ class ViewModel{
     var onDataUpdated: (() -> Void)?
     var onError: ((String) -> Void)?
     
-    
     // MARK: Private Data (only ViewModel can change)
     private var allBeaches: [WaterQuality] = []
     private var filteredBeaches: [WaterQuality] = []
     private var isSearching: Bool = false
     
+    
     //MARK: - Computed Properties for ViewController to read
     var numberOfBeaches: Int{
         let count = isSearching ? filteredBeaches.count : allBeaches.count
-        //print("DEBUG: numberOfBeaches = \(count) (isSearching: \(isSearching))")
         return count
     }
     
@@ -37,6 +33,45 @@ class ViewModel{
         return isSearching ? filteredBeaches[index] : allBeaches[index]
     }
     
+    
+    // MARK: Helper methods
+    func getCleanedBeachName(at index: Int) -> String {
+        let item = beach(at: index)
+        var cleanedName = (item.coast ?? "N/A")
+            .components(separatedBy: "_")
+            .first ?? ""
+        cleanedName = cleanedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleanedName
+    }
+    
+    func getRegion(at index: Int) -> String {
+            let item = beach(at: index)
+        return item.regionName // no need fo unwrapping
+    }
+    
+    func displayTextForBeach(at index: Int) -> (title: String, subtitle: String) {
+        let item = beach(at: index)
+        let title = item.coast ?? "Unknown"
+        let subtitle = "\(item.perunit ?? "N/A") | E. coli: \(item.ecoli ?? "N/A") | Enterococci: \(item.intenterococci ?? "N/A")"
+        return (title, subtitle)
+    }
+    
+    
+    //MARK: NAvigationHandling
+    func handleBeachSelection(at index: Int, completion: @escaping (WaterQuality, Double?, Double?) -> Void) {
+        let item = beach(at: index)
+        let cleanedName = getCleanedBeachName(at: index)
+        let region = getRegion(at: index)
+        
+        GeocodingService.shared.geocode(beachName: cleanedName, region: region) { result in
+            switch result{
+            case .success(let (latitude, longitude)):
+                completion(item, latitude, longitude)
+            case .failure:
+                completion(item, nil, nil)
+            }
+        }
+    }
     
     //MARK: Public Actions
     func loadBeaches(){
@@ -93,6 +128,7 @@ class ViewModel{
         }
         onDataUpdated?()  // tell ViewController: reload table
     }
+    
     
     // MARK: - Private Helpers
     private func applySearchFilter(for query: String? = nil) {

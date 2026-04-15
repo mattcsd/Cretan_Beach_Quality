@@ -9,9 +9,10 @@ import UIKit
 
 class DetailViewController: UIViewController {
 
-    // MARK: - ViewModel (injected from ViewController)
-    var viewModel: DetailViewModel! // the ! is needed? yes compiler error
-    
+    // MARK: - ViewModel
+    var viewModel: DetailViewModel!
+    // i think i need ! to say YES I HAVE CREATED THIS OUTSIDE OF HERE
+
     private let scrollView = UIScrollView()
     private let contentView = UIView()
     private let currentWeatherView = CurrentWeatherView()
@@ -36,12 +37,17 @@ class DetailViewController: UIViewController {
     //MARK: Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         setupUI()
         setupCallbacks()
         configureWaterQuality()
-        viewModel.loadWeather()
+        print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
+        //TESTING ASYNC
+        //viewModel.loadWeather()
+        Task {
+            await viewModel.loadWeatherAsync()
+        }
     }
+    
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         // force the table to update its height based on content
@@ -210,6 +216,7 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
         
         let forecast = viewModel.forecast(at: indexPath.row)
         let isExpanded = viewModel.isExpanded(at: indexPath.row)
+        
         cell.configure(with: forecast, isExpanded: isExpanded)
         cell.delegate = self
         

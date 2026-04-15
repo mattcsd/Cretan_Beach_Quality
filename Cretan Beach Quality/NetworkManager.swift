@@ -66,7 +66,9 @@ final class NetworkManager{
         
         print("Fetching weather for beach at \(latitude) \(longitude)")
         
+        
         fetch(from: url) { (result: Result<WeatherResponse, Error>) in
+        //now in main thread, inherited from above
             switch result {
             case .success(let weather):
                 print("Weather data received - Temp \(weather.current.temperature)C")
@@ -77,6 +79,23 @@ final class NetworkManager{
             }
             
         }
+    }
+    
+    //MARK: Adding async/await network calls                                    oxi Lambda genikou typou
+    func fetchWeatherAsync(latitude: Double, longitude: Double) async throws -> WeatherResponse {
+        let forecastDays: Int = 7
+        
+        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=\(forecastDays)"
+        
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "NetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        print("ASYNc CALLED.networkmanager")
+
+        
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let decoded = try JSONDecoder().decode(WeatherResponse.self, from: data)
+        return decoded
     }
 }
 
