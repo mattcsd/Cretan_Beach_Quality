@@ -43,7 +43,7 @@ class DetailViewModel{
     }
     
     // MARK: Actions
-    func loadWeather() {
+    /*func loadWeather() {
         guard let lat = beachLatitude, let lon = beachLongitude else {
             onError?("Location not available")
             return
@@ -66,7 +66,7 @@ class DetailViewModel{
               //  }
             }
         }
-    }
+    }*/
     
     //MARK: async/await version==========================
     func loadWeatherAsync() async {

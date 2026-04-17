@@ -11,7 +11,7 @@ class DetailViewController: UIViewController {
 
     // MARK: - ViewModel
     var viewModel: DetailViewModel!
-    // i think i need ! to say YES I HAVE CREATED THIS OUTSIDE OF HERE
+    //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say YES I HAVE CREATED THIS OUTSIDE OF HERE
 
     private let scrollView = UIScrollView()
     private let contentView = UIView()

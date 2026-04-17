@@ -16,7 +16,7 @@ final class NetworkManager{
     // async await calls.
     //maybe add the Geocodingservice and remove the file
     
-    func fetch<T: Decodable>(
+    /*func fetch<T: Decodable>(
         from url:URL,
         completion: @escaping (Result<T, Error>) -> Void){
 
@@ -53,35 +53,62 @@ final class NetworkManager{
         }
         task.resume()
     }
+     
+     func fetchAsync<T: Decodable>(from url: URL) async throws -> T {
+         print("fetchAsync called for URL: \(url)")
+         
+         //1. Fetch data (automatically on background thread)
+         let (data, _) = try await URLSession.shared.data(from: url)
+         
+         //2. decode data
+         let decoded = try JSONDecoder().decode(T.self, from: data)
+         
+         //3. Return the result(automatically back on original thread)
+         return decoded
+     }
+     
+     */
+    //MARK: Adding async/await network calls                                    oxi Lambda genikou typou
     
-    func fetchWeather(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void){
-        let forecastDays: Int = 7 // how many days to get data for.
+
+    //Generic async/await fetch for any Decodble type
+    // - Parameter url: The URL to fetch from
+    // - Returns: Decoded object of type T
+    // - Throws: Network error or decoding error
+    
+    func fetchAsync<T: Decodable> (from url: URL) async throws -> T {
+        print("fetchAsync: Starting request for \(url)")
         
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=\(forecastDays)"
+        //URLSession.shared.data(from:) is already async/await
+        //It runs on a backgroun thread automatically
+        let (data, response) = try await URLSession.shared.data(from: url)
         
-        guard let url = URL(string: urlString) else {
-            completion(.failure(NSError(domain: "Bad URL", code: -1)))
-            return
+        // check HTTP response code (optional but better)
+        if let httpResponse = response as? HTTPURLResponse {
+            print("fetchAsync: HTTP Status code: \(httpResponse.statusCode)")
+            guard (200...299).contains(httpResponse.statusCode) else {
+                throw NSError(
+                    domain: "NetworkManager",
+                    code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: "Server returned error code \(httpResponse.statusCode)"]
+                )
+            }
         }
         
-        print("Fetching weather for beach at \(latitude) \(longitude)")
+        print("!!!fetchAsync: Received \(data.count) bytes")
         
-        
-        fetch(from: url) { (result: Result<WeatherResponse, Error>) in
-        //now in main thread, inherited from above
-            switch result {
-            case .success(let weather):
-                print("Weather data received - Temp \(weather.current.temperature)C")
-                completion(.success(weather))
-            case .failure(let error):
-                print("Weather fetch failed: \(error)")
-                completion(.failure(error))
-            }
-            
+        // Decode the data
+        do {
+            let decoded = try JSONDecoder().decode(T.self, from: data)
+            print("fetchAsync: Succesfully decoded \(T.self)")
+            return decoded
+        } catch {
+            print("fetchAsync: Decoding error: \(error)")
+            throw error
         }
     }
     
-    //MARK: Adding async/await network calls                                    oxi Lambda genikou typou
+    
     func fetchWeatherAsync(latitude: Double, longitude: Double) async throws -> WeatherResponse {
         let forecastDays: Int = 7
         
@@ -98,5 +125,30 @@ final class NetworkManager{
         return decoded
     }
 }
-
+/*func fetchWeather(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void){
+    let forecastDays: Int = 7 // how many days to get data for.
+    
+    let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=\(forecastDays)"
+    
+    guard let url = URL(string: urlString) else {
+        completion(.failure(NSError(domain: "Bad URL", code: -1)))
+        return
+    }
+    
+    print("Fetching weather for beach at \(latitude) \(longitude)")
+    
+    
+    fetch(from: url) { (result: Result<WeatherResponse, Error>) in
+    //now in main thread, inherited from above
+        switch result {
+        case .success(let weather):
+            print("Weather data received - Temp \(weather.current.temperature)C")
+            completion(.success(weather))
+        case .failure(let error):
+            print("Weather fetch failed: \(error)")
+            completion(.failure(error))
+        }
+        
+    }
+}*/
 

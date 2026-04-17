@@ -58,11 +58,24 @@ class ViewModel{
     
     
     //MARK: NAvigationHandling
-    func handleBeachSelection(at index: Int, completion: @escaping (WaterQuality, Double?, Double?) -> Void) {
+    func handleBeachSelection(at index: Int) async -> (item: WaterQuality, latitude: Double?, longitude: Double?){
+        
         let item = beach(at: index)
         let cleanedName = getCleanedBeachName(at: index)
         let region = getRegion(at: index)
         
+        //Task {
+        do {
+            let (latitude, longitude) = try await GeocodingService.shared.geocode(beachName: cleanedName, region: region)
+                return (item, latitude, longitude)
+        } catch {
+            // stil continue but with no coordinates
+            print("geocoding error \(error)")
+            return (item, nil, nil)
+        }
+        //}
+        
+        /*
         GeocodingService.shared.geocode(beachName: cleanedName, region: region) { result in
             switch result{
             case .success(let (latitude, longitude)):
@@ -70,7 +83,7 @@ class ViewModel{
             case .failure:
                 completion(item, nil, nil)
             }
-        }
+        }*/
     }
     
     //MARK: Public Actions
@@ -85,6 +98,26 @@ class ViewModel{
             return
         }
         
+        //Task inside. i thought its better to add here rather than wherever it is called. eg viewModel.viewdidload to contain something like task{dsdsa}
+        
+        Task { /* i dont need [weak self] in guard let self = self else {return}*/
+            do {
+                let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
+                
+                self.allBeaches = data
+                if self.isSearching {
+                    self.applySearchFilter()
+                }
+                
+                self.onLoadingChanged?(false)
+                onDataUpdated?()
+            } catch {
+                self.onLoadingChanged?(false)
+                self.onError?(error.localizedDescription)
+            }
+        }
+    }
+        /* OLD FETCH
         NetworkManager.shared.fetch(from: url) { [weak self] (result: Result<[WaterQuality], Error>) in
             //check if exists or has corrupted/failer
             guard let self = self else {return}
@@ -110,7 +143,7 @@ class ViewModel{
             }
         }
                 
-    }
+    }*/
     
     
     func refreshBeaches(){
@@ -131,7 +164,7 @@ class ViewModel{
     
     
     // MARK: - Private Helpers
-    private func applySearchFilter(for query: String? = nil) {
+    private func applySearchFilter(for query: String? = nil){
         let searchText = (query ?? "").lowercased()
         if searchText.isEmpty {
             filteredBeaches = []

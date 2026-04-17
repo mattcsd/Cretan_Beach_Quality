@@ -14,18 +14,27 @@ class GeocodingService {
     
     private init() {}
     
-    func geocode(beachName: String, region: String, completion: @escaping (Result<(latitude: Double, longitude: Double), Error>) -> Void) {
+    func geocode(beachName: String, region: String) async throws -> (latitude: Double, longitude: Double) {
         let searchQuery = "\(beachName) \(region)"
         let encodedQuery = searchQuery.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
         let urlString = "https://secure.geonames.org/searchJSON?q=\(encodedQuery)&country=GR&maxRows=1&username=\(geonamesUsername)"
         
         guard let url = URL(string: urlString) else {
-            completion(.failure(NSError(domain: "GeocodingService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])))
-            return
+            throw NSError(domain: "GeocodingService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
+        // fetch async returns the response directly OR throws an error
+        let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(from: url)
         
+        guard let location = response.geonames?.first,
+              let lat = location.latitude,
+              let lon = location.longitude else {
+            throw NSError(domain: "GeocodingService", code: -2, userInfo: [NSLocalizedDescriptionKey: "No coordinates found"])
+        }
+        return (lat, lon)
+    }
+    /*
         // use the existing GeoNamesSearchResponse model
-        NetworkManager.shared.fetch(from: url) { (result: Result<GeoNamesSearchResponse, Error>) in
+        NetworkManager.shared.fetchAsync(from: url)
             switch result {
                 //no need for dispatch as it inherits from netwman.fetch
             case .success(let response):
@@ -41,5 +50,5 @@ class GeocodingService {
                 completion(.failure(error))
             }
         }
-    }
+    }*/
 }

@@ -205,21 +205,22 @@ extension ViewController: UITableViewDelegate {
             cell.accessoryView = spinner
         }
         
-        viewModel.handleBeachSelection(at: indexPath.row) { [weak self] item, Blatitude, Blongitude in
-            guard let self = self else { return}
+        // Use Task to call async function
+        Task {
+            // Await the result from ViewModel
+            let result = await viewModel.handleBeachSelection(at: indexPath.row)
             
-            //remove the spinner //dont need indexPath.row(?) no because i am asking for a full cell not just the int
+            // Remove spinner (back on main thread)
             if let cell = tableView.cellForRow(at: indexPath) {
-                //spinner.stopAnimating()
-                //spinner.removeFromSuperview()
                 cell.accessoryView = nil
             }
-            //ayta kalo de tha htan na apone ViewModel? kalytera edw giati an ta paw sto model tha prepei na kserei o controller gia UIKit + ViewModel tha kserei yparksh ton Controller
+            
+            // Create and navigate to DetailViewController
             let detailVC = DetailViewController()
             let detViewModel = DetailViewModel(
-                beachItem: item,
-                latitude: Blatitude,
-                longitude: Blongitude
+                beachItem: result.item,
+                latitude: result.latitude,
+                longitude: result.longitude
             )
             detailVC.viewModel = detViewModel
             self.navigationController?.pushViewController(detailVC, animated: true)
