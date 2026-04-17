@@ -40,6 +40,7 @@ class DetailViewController: UIViewController {
         setupUI()
         setupCallbacks()
         configureWaterQuality()
+        currentWeatherView.showLoading()
         print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
         //TESTING ASYNC
         //viewModel.loadWeather()

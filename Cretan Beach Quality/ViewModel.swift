@@ -69,7 +69,7 @@ class ViewModel{
             let (latitude, longitude) = try await GeocodingService.shared.geocode(beachName: cleanedName, region: region)
                 return (item, latitude, longitude)
         } catch {
-            // stil continue but with no coordinates
+            // stil continue but with no coordinates. the one who receives it()
             print("geocoding error \(error)")
             return (item, nil, nil)
         }
