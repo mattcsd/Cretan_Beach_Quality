@@ -1,0 +1,322 @@
+LOG:
+    14/4 latest meeting, we talked about completing 
+    1. the mvvm architecture
+    2. correct the controller/viewmodel creation/instantiation (check needless mesazwntas)  
+    3. combine intercomm
+    4. header for the tableView. we should tkae out the old architecture tableview in a scrollView.
+    5. 
+
+TODO:
+
+DONE:
+    15/4
+        1. creating helper methods in viewmodel (getcleanedname,getregion). could pass the item but better to pass the index as the viewcontroller shouldnt own or diaxeirizetai data. ara pass mono index.
+
+        completion: @escaping (WaterQuality, Double?, Double?) -> Void)
+        // When I'm done, I will CALL this completion
+        // And I will pass it: (theBeachItem, latitude, longitude)
+        
+        case .success(let (latitude, longitude)):
+            completion(item, latitude, longitude)
+        case .failure:
+            completion(item, nil, nil)
+        -
+
+        tableView.deselectRow(at: indexPath, animated: true)
+        -Removes the gray highlight from a tapped row.
+
+        mindfuck:
+        -o viewcontroller kapou prepei na kanei navigate. tha dhmiourghsei ton detailviewcontroller me data?(lathos bash mvvm). tha dhmiourghsei to detailviewmodel prwta kai meta ayto tha dhmiourghsei ena detailviewcontroller, alla se ayth th periptwsh pws kanoume navigate apo ton Viewcontroller->detailviewController
+
+        NetworkManager is final because:
+        1.Performance-Swift can call methods faster (no need to check for overrides)
+        2.Design-You're saying "this class is complete, don't extend it"
+        3.Safety-Prevents someone from breaking your networking logic by overriding
+        4.singleton pattern-Singletons are typically final because they shouldn't be subclassed-    static let shared = NetworkManager()
+
+        notes:
+        async   This function can pause (suspend) and resume later
+        await   Pause here until the async function completes
+        throws  This function can fail (throw an error)
+        try Call this function that might throw an error
+
+        flow:
+        1. Call fetchWeatherAsync()
+        2. Function reaches `await URLSession.shared.data(from: url)`
+        3. Function SUSPENDS (pauses) - UI stays responsive
+        4. Network finishes - function RESUMES
+        5. Returns the result
+
+        EBALA KAI THN FETCHASYNC, THELEI RITHMISMA
+    
+    16/4
+
+        adding the async/await. reading about concurrency, threads, dispatch.
+        example:
+
+        callback hell:
+        func doSomething() {
+            fetchUser { user in
+                fetchPosts(user: user) { posts in
+                    fetchComments(posts: posts) { comments in
+                        fetchLikes(comments: comments) { likes in
+                            // Deeply nested - hard to read
+                        }
+                    }
+                }
+            }
+        }
+
+        better practise
+        func doSomething() async throws {
+            let user = try await fetchUser()
+            let posts = try await fetchPosts(user: user)
+            let comments = try await fetchComments(posts: posts)
+            let likes = try await fetchLikes(comments: comments)
+            // Flat, readable, like normal code
+        }
+
+        1. fetchUser() is called
+        2. Function SUSPENDS (pauses) at `await`
+        3. Thread is free to do other work
+        4. fetchUser() completes
+        5. Function RESUMES with the result
+        6. Continue to next line
+
+        REGARDING escaping
+
+        func fetch(completion: @escaping () -> Void) {
+            // Function returns immediately
+            // completion is stored and called LATER (after network finishes)
+        }
+        NONESCAPING 
+        func doSomething(closure: () -> Void) {
+            closure()  // Called immediately, inside the function
+            // closure "dies" when function ends
+        }
+
+
+        Throws:
+        func fetchAsync() async throws -> WeatherResponse
+        
+        A function that can fail and return an error instead of a value.
+
+
+        how to call:
+        do {
+            let result = try await fetchAsync()
+            // Success - use result
+        } catch {
+            // Failure - handle error
+            print("Error: \(error)")
+        }
+
+
+
+        COMPARE WITH RESULT TYPE:
+        // Callback version
+        fetch { result in
+            switch result {
+            case .success(let data): // handle success
+            case .failure(let error): // handle error
+            }
+        }
+
+        // Async/await version
+        do {
+            let data = try await fetchAsync() // success path
+        } catch {
+            // error path
+        }
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+    
+            // ❌ ERROR: Can't use await here (viewDidLoad is not async)
+            let weather = try await fetchWeatherAsync()
+        }
+
+
+        THIS IS CORRECT:
+
+        override func viewDidLoad() {
+            super.viewDidLoad()
+    
+            // ✅ OK: Task creates an async context
+            Task {
+                let weather = try await fetchWeatherAsync()
+                // Use weather
+            }
+        }
+
+        SUMMARY:
+        Aspect              Callbacks                               async/await
+        Thread management   Manual (DispatchQueue.main.async)       Automatic
+        Error handling      Result type + switch                    do/catch + throws
+        Code readability    Nested closures                         Linear, like synchronous code
+        Memory management   Need [weak self]                        Usually unenesesary (but still careful)
+        Learning curve  Easier to understand initially  Requires new mental model
+        When to use Supporting older iOS versions   iOS 13+ (modern)
+
+
+
+        Questions: 
+            1. ViewModel:103 weak self
+            2. ViewModel loadBeaches:101 : i put task in there instead of when calling it. vs
+            i read the Task better be in the ViewController than ViewModel
+            
+            3. in the ViewModel.handleBeachSelection, i mught return nil for lat, lon. the caller (ViewController.didselectrowat) must check how to handleBeachSelection.
+
+
+
+        // ❌ WRONG - Task inside async function
+        async func something() {
+            Task {
+                // This creates a SEPARATE task
+                // The outer function still needs to return something
+            }
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+    
+            Task { [weak self] in
+                await self?.viewModel.loadWeatherAsync()
+            }
+        }
+
+        Task belongs in the ViewController, not the ViewModel.
+
+    17/4:
+        viewModel.loadBeaches() is called, but inside ViewModel.loadBeaches() there is a Task { }.
+
+        What happens if the user closes the screen while the network request is in flight? 
+        (the Task continues – but because there’s no [weak self], it may try to update a deallocated ViewModel → crash?
+        Actually, self inside Task is the ViewModel, which is owned by the ViewController. 
+        If ViewController deallocates, ViewModel also deallocates, so self becomes nil.
+        But Task captures self strongly? Let’s check: Task { ... } inside a method of ViewModel – it captures self strongly.
+        If the ViewController is dismissed, the ViewModel might still be alive until the task finishes. That’s a potential memory leak?
+        Not a leak, but the ViewModel may outlive its ViewController briefly.
+        Why might that be a problem? (updating UI on a dead controller – but callbacks use [weak self], so it’s safe.)
+    19/4:
+        1.modified the network manager: fetchWeatherAsync to use the already set fetchAsync.viewModel
+        2.proper error incase link is broken in current weather view.viewModel
+        3.when expanding dont reload all the days, but just the day that was expanded.
+
+
+        QA:
+        1. Fixed height in CurrentWeatherView
+
+    You said you don’t know how to fix it.
+    Solution: Remove the fixed height constraint and let Auto Layout calculate the height based on the content. The view already has top and bottom constraints from the labels. The timeLabel is pinned to the bottom, and weatherIcon is pinned near the top. Auto Layout can then determine the natural height. You would also need to ensure the container view doesn't have a fixed height; instead, let it be determined by its subviews.
+
+    2. Priority 999 – what is it?
+
+    Layout priority ranges from 1 to 1000. 1000 is required. 
+    999 means “almost required – satisfy if possible, but if 
+    it conflicts with a required constraint, break this one”. 
+    It’s used to allow the hourly forecast view to determine its 
+    own height while still having a bottom anchor to the container. 
+    If the content height would make the cell too big, the bottom 
+    constraint can be ignored. A more readable alternative 
+    is .defaultHigh (which is 750) or .required (1000). 999 is a 
+    bit arbitrary.
+
+    3. Why reload the whole table in onWeatherLoaded?
+
+    Because the number of forecast days might change 
+    (though usually it’s fixed) and all cells depend on weather data. 
+    you could reload just the section, but reloading the whole table 
+    is simpler and fine for a small table.
+
+    4. viewDidLayoutSubviews for the header
+
+    When you set tableView.tableHeaderView, the table does not 
+    automatically adjust the header’s height if the content inside 
+    changes (e.g., due to dynamic font sizes or rotation). 
+    You have to manually calculate the fitting size and assign 
+    the new height. That’s what the code does.
+
+    5. toggleExpanded calling onWeatherLoaded
+
+    As explained, it forces the table to reload so the cell 
+    can show/hide the hourly view. Without it, the UI would 
+    not update until another event triggered a reload.
+
+    6. Hard‑coded geonamesUsername
+
+    For a test app it’s fine. In production, you would store 
+    API keys in a configuration file that is not committed to 
+    version control (e.g., .xcconfig, Info.plist, or environment 
+        variables). You could also use a secure service like AWS 
+    Secrets Manager. But never hard‑code secrets.
+
+    7. Returning item from handleBeachSelection is redundant
+
+    You are correct that the item does not contain the coordinates. 
+    But the caller (didSelectRowAt) already has the item from 
+    viewModel.beach(at: indexPath.row) before calling 
+    handleBeachSelection. So you are passing back the same item that 
+    the caller already has. That’s the redundancy. You could 
+    change handleBeachSelection to return only the coordinates 
+    (or throw), and let the caller use its own item. That reduces 
+    unnecessary data passing.
+
+    8. Difference between async function and returning a Task
+
+    async function: marks a function that can suspend. When you call it, 
+    you must use await. The function runs on the same thread and resumes 
+    on the same thread after suspension. It does not create a new task.
+    Task { }: creates a new top‑level task that runs concurrently. 
+    You use it to call async code from a non‑async context (e.g., from 
+    viewDidLoad). It returns a Task object that you can cancel or await.
+    In ViewModel.loadBeaches(), you put Task { } inside the method. 
+    That means the method returns immediately, and the network work 
+    happens in the background. The caller cannot await its completion. 
+    That’s why you still use callbacks (onLoadingChanged, onDataUpdated) 
+    to notify the ViewController. If you made loadBeaches itself async, 
+    then the ViewController would have to call await viewModel.loadBeaches() 
+    inside a Task, which is also fine – but then you would not need the 
+    callbacks for loading state because you could update UI directly 
+    after the await. Your current design mixes both patterns, which is 
+    a bit confusing.
+
+    9. Middleman in navigation
+
+    Your supervisors said that creating the DetailViewModel inside the 
+    ViewController is an extra middleman. The alternative is to have 
+    DetailViewController create its own ViewModel from raw data (beach 
+    item, latitude, longitude). Then the ViewController only passes 
+    raw data and doesn't know about DetailViewModel. This reduces 
+    coupling and makes the ViewController simpler.
+
+    10. DispatchQueue.main.async vs await
+
+    DispatchQueue.main.async schedules a block of code to run later on 
+    the main thread. You have to manually ensure you’re on the main 
+    thread for UI updates.await inside an async function 
+    tells the system to suspend the function while waiting for an 
+    asynchronous operation. When the operation completes, the function 
+    resumes on the same thread (typically the main thread if that’s 
+    where it was called). No manual dispatch needed, and the code 
+    looks linear.
+
+
+
+
+    In didSelectRowAt, you create a DetailViewModel and assign it to 
+    detailVC.viewModel.
+
+    Why is this considered the “middleman” your supervisors mentioned? 
+    (ViewController creates DetailViewModel – should be created by 
+    DetailViewController itself)
+
+
+
+
+    🟡 loadBeaches uses Task { } inside the method.
+
+    What if this method is called multiple times rapidly? (multiple concurrent tasks – could cause race conditions on allBeaches and filteredBeaches).
+    How could you prevent that? (use a loading flag or cancel previous task)
+
+
