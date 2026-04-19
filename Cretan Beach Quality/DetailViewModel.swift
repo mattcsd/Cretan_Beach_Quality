@@ -92,13 +92,13 @@ class DetailViewModel{
     //===================================end async/await
     
     func toggleExpanded(at index: Int) {
-            if expandedIndex == index {
-                expandedIndex = nil
-            } else {
-                expandedIndex = index
-            }
-            onWeatherLoaded?()  // tell table to reload rows
+        if expandedIndex == index {
+            expandedIndex = nil
+        } else {
+            expandedIndex = index
         }
+        //inorder not to reload all rows when only one needs updating. onWeatherLoaded?()  // tell table to reload rows
+    }
         
     // MARK: - Helpers
     private func formatDate(_ dateString: String?) -> String {

@@ -68,6 +68,8 @@ final class NetworkManager{
      }
      
      */
+    
+    
     //MARK: Adding async/await network calls                                    oxi Lambda genikou typou
     
 
@@ -79,11 +81,11 @@ final class NetworkManager{
     func fetchAsync<T: Decodable> (from url: URL) async throws -> T {
         print("fetchAsync: Starting request for \(url)")
         
-        //URLSession.shared.data(from:) is already async/await
-        //It runs on a backgroun thread automatically
+        //URLSession.shared.data(from:) is already async
+        //it runs on a backgroun thread automatically
         let (data, response) = try await URLSession.shared.data(from: url)
         
-        // check HTTP response code (optional but better)
+        // check HTTP response code (optional but good practise)
         if let httpResponse = response as? HTTPURLResponse {
             print("fetchAsync: HTTP Status code: \(httpResponse.statusCode)")
             guard (200...299).contains(httpResponse.statusCode) else {
@@ -97,7 +99,7 @@ final class NetworkManager{
         
         print("!!!fetchAsync: Received \(data.count) bytes")
         
-        // Decode the data
+        // data decoding
         do {
             let decoded = try JSONDecoder().decode(T.self, from: data)
             print("fetchAsync: Succesfully decoded \(T.self)")
@@ -107,8 +109,19 @@ final class NetworkManager{
             throw error
         }
     }
+    func fetchWeatherAsync(latitude: Double, longitude: Double) async throws -> WeatherResponse {
+        let forecastDays = 7
+        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=\(forecastDays)"
+        
+        guard let url = URL(string: urlString) else {
+            throw NSError(domain: "NetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+        }
+        
+        // Use the generic fetchAsync
+        return try await fetchAsync(from: url)
+    }
     
-    
+    /*
     func fetchWeatherAsync(latitude: Double, longitude: Double) async throws -> WeatherResponse {
         let forecastDays: Int = 7
         
@@ -123,7 +136,7 @@ final class NetworkManager{
         let (data, _) = try await URLSession.shared.data(from: url)
         let decoded = try JSONDecoder().decode(WeatherResponse.self, from: data)
         return decoded
-    }
+    }*/
 }
 /*func fetchWeather(latitude: Double, longitude: Double, completion: @escaping (Result<WeatherResponse, Error>) -> Void){
     let forecastDays: Int = 7 // how many days to get data for.

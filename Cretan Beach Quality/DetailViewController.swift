@@ -12,12 +12,11 @@ class DetailViewController: UIViewController {
     // MARK: - ViewModel
     var viewModel: DetailViewModel!
     //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say YES I HAVE CREATED THIS OUTSIDE OF HERE
-
-    private let scrollView = UIScrollView()
-    private let contentView = UIView()
-    private let currentWeatherView = CurrentWeatherView()
-    private var dailyTableView = SelfSizingTableView()
     
+    private let currentWeatherView = CurrentWeatherView()
+    private let tableView = UITableView()
+    
+    private var weatherErrorLabel: UILabel?
     
     //water quality section
     private let waterQualityTitle: UILabel = {
@@ -51,8 +50,16 @@ class DetailViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        // force the table to update its height based on content
-        dailyTableView.invalidateIntrinsicContentSize()
+        
+        // an de to xw sprwxnei to header pros ta panw kai krybei to miso
+        // to rresize header if needed for rotation or dynamic font changes)
+        if let headerView = tableView.tableHeaderView {
+            let size = headerView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+            if headerView.frame.size.height != size.height {
+                headerView.frame.size.height = size.height
+                tableView.tableHeaderView = headerView
+            }
+        }
     }
     
     
@@ -66,18 +73,19 @@ class DetailViewController: UIViewController {
                 self.currentWeatherView.configure(with: weather)
             }
             //reload the forecast table
-            self.dailyTableView.reloadData()
+            self.tableView.reloadData()
         }
         
         viewModel.onError = { [weak self] errorMessage in
-            print("Weather error: \(errorMessage)")
+            /*print("Weather error: \(errorMessage)")
             // show simple error label inside the weather view
             let errorLabel = UILabel()
             errorLabel.text = "Weather data unavailable"
             errorLabel.textColor = .secondaryLabel
             errorLabel.textAlignment = .center
             self?.currentWeatherView.addSubview(errorLabel)
-            self?.currentWeatherView.showErrorMessage(errorMessage)
+            self?.currentWeatherView.showErrorMessage(errorMessage)*/
+            self?.currentWeatherView.showErrorMessage("Weather data unavailable")
         }
         
         viewModel.onLoadingChanged = { [weak self] isLoading in
@@ -89,101 +97,91 @@ class DetailViewController: UIViewController {
         }
     }
     
-    
-    private func setupDailyForecastTable() {
-        dailyTableView.delegate = self
-        dailyTableView.dataSource = self
-        dailyTableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
-        dailyTableView.separatorStyle = .none
-        dailyTableView.backgroundColor = .clear
-        dailyTableView.isScrollEnabled = false
-        
-        // enable automatic row height
-        dailyTableView.rowHeight = UITableView.automaticDimension
-        dailyTableView.estimatedRowHeight = 70
-    }
+    // MARK: - Header View Creation
 
-    private func setupUI() {
-        view.backgroundColor = .white
+    private func createTableHeaderView() -> UIView {
+        let headerView = UIView()
         
-        view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        contentView.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
-        ])
-        
-        // Style labels
-        coastLabel.font = .systemFont(ofSize: 18, weight: .semibold)
-        regionLabel.font = .systemFont(ofSize: 16)
-        ecoliLabel.font = .systemFont(ofSize: 16)
-        enterococciLabel.font = .systemFont(ofSize: 16)
-        dateLabel.font = .systemFont(ofSize: 14)
-        dateLabel.textColor = .secondaryLabel
-        
-        // Water quality stack
+        // water quality stack
         let waterQualityStack = UIStackView(arrangedSubviews: [
             waterQualityTitle, coastLabel, regionLabel, ecoliLabel, enterococciLabel, dateLabel
         ])
         waterQualityStack.axis = .vertical
         waterQualityStack.spacing = 8
         
-        // Weather stack
+        // current weather stack
         let weatherStack = UIStackView(arrangedSubviews: [currentWeatherView])
         weatherStack.axis = .vertical
         weatherStack.spacing = 12
         
-        // Daily forecast title
-        let dailyTitleLabel = UILabel()
-        dailyTitleLabel.text = "7-Day Forecast"
-        dailyTitleLabel.font = .boldSystemFont(ofSize: 18)
+        // ivider between water quality and weather
+        let divider = createDivider()
         
-        // Setup table view
-        dailyTableView.delegate = self
-        dailyTableView.dataSource = self
-        dailyTableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
-        dailyTableView.separatorStyle = .none
-        dailyTableView.backgroundColor = .clear
-        dailyTableView.isScrollEnabled = false
-        dailyTableView.rowHeight = UITableView.automaticDimension
-        dailyTableView.estimatedRowHeight = 70
-        let dailyStack = UIStackView(arrangedSubviews: [dailyTitleLabel, dailyTableView])
-        dailyStack.axis = .vertical
-        dailyStack.spacing = 12
-        
-        // Main stack
+        // main stack containign everything
         let mainStack = UIStackView(arrangedSubviews: [
             waterQualityStack,
-            createDivider(),
-            weatherStack,
-            dailyStack
+            divider,
+            weatherStack
         ])
         mainStack.axis = .vertical
         mainStack.spacing = 20
         mainStack.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(mainStack)
+        
+        headerView.addSubview(mainStack)
         
         NSLayoutConstraint.activate([
-            mainStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
-            mainStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            mainStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-            mainStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
+            mainStack.topAnchor.constraint(equalTo: headerView.topAnchor, constant: 20),
+            mainStack.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 20),
+            mainStack.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -20),
+            mainStack.bottomAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -20)
         ])
+        
+        return headerView
     }
     
-    
-    
+    // MARK: - UI Setup
+
+    private func setupUI() {
+        view.backgroundColor = .white
+        
+        //  table view configurations
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        tableView.backgroundColor = .clear
+        tableView.separatorStyle = .none
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 70
+        tableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
+        
+        // seet delegate and data source
+        tableView.delegate = self
+        tableView.dataSource = self
+        
+        // add table view to view hierarchy
+        view.addSubview(tableView)
+        
+        // table view constraints make it fill entire screen
+        NSLayoutConstraint.activate([
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        
+        // create and set the header view
+        let headerView = createTableHeaderView()
+        tableView.tableHeaderView = headerView
+        
+        // force layout to calculate header height
+        headerView.setNeedsLayout()
+        headerView.layoutIfNeeded()
+        
+        // update header height after layout
+        let size = headerView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        if headerView.frame.size.height != size.height {
+            headerView.frame.size.height = size.height
+            tableView.tableHeaderView = headerView
+        }
+    }
     
     // simple gray divider
     private func createDivider () -> UIView {
@@ -192,7 +190,6 @@ class DetailViewController: UIViewController {
         divider.backgroundColor = .systemGray4
         return divider
     }
-    
     
     //data manipulated in DetailViewModel
     private func configureWaterQuality() {
@@ -203,6 +200,7 @@ class DetailViewController: UIViewController {
         dateLabel.text = viewModel.formattedDate
     }
 }
+
 // MARK: - UITableView Delegate & DataSource
 extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     
@@ -231,52 +229,28 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
         return viewModel.isExpanded(at: indexPath.row) ? 220 : 70
     }
-    
+    //reload only the selected row
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        viewModel.toggleExpanded(at: indexPath.row)
+        tableView.reloadRows(at: [indexPath], with: .automatic)
+    }
+    /*func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         print("--- DEBUG START: Row Clicked ---")
         print("DEBUG: [Click] User tapped row: \(indexPath.row)")
         viewModel.toggleExpanded(at: indexPath.row)
-        //tableView.reloadRows(at: [indexPath], with: .automatic)
         //tableView.beginUpdates()
         //tableView.endUpdates()
         tableView.reloadRows(at: [indexPath], with: .fade)
         print("--- DEBUG END ---")
-        
-    }
+    }*/
 }
 
 // MARK: - DailyForecastCellDelegate
 extension DetailViewController: DailyForecastCellDelegate {
 
     func didTapExpandButton(for cell: DailyForecastCell) {
-        guard let indexPath = dailyTableView.indexPath(for: cell) else { return }
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
         viewModel.toggleExpanded(at: indexPath.row)
-        dailyTableView.reloadRows(at: [indexPath], with: .automatic)
-    }
-}
-
-// MARK: - Self-sizing UITableView
-
-// A UITableView that reports its contentSize as its intrinsicContentSize.
-
-// Standard UITableView has no intrinsicContentSize, which causes problems when
-// placed inside a UIStackView - the stack view collapses the table to zero height.
-
-//This subclass overrides intrinsicContentSize to return the actual content height,
-// allowing the table to properly size itself within a stack view while still
-// supporting dynamic cell heights (like expanded/collapsed forecast cells).
-
-private class SelfSizingTableView: UITableView {
-    override var contentSize: CGSize {
-        didSet {
-            // every time the content size changes,cells are added/removed/expanded
-            // tell Auto -ayout that intrinsic size has changed
-            invalidateIntrinsicContentSize() }
-    }
-    override var intrinsicContentSize: CGSize {
-        //ensure layout is up to date before calculating height
-        layoutIfNeeded()
-        //return the current content height, but no intrinsic width constraints will do that
-        return CGSize(width: UIView.noIntrinsicMetric, height: contentSize.height)
+        tableView.reloadRows(at: [indexPath], with: .automatic)
     }
 }

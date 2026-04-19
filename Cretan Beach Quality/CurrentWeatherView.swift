@@ -36,6 +36,16 @@ class CurrentWeatherView: UIView {
         return spinner
     }()
     
+    private let errorLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        label.numberOfLines = 0
+        label.isHidden = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
+    
     // misc elements needed
     private let weatherIcon = UIImageView()
     private let temperatureLabel = UILabel()
@@ -66,6 +76,7 @@ class CurrentWeatherView: UIView {
 
     func hideLoading() {
         loadingIndicator.stopAnimating()
+        errorLabel.isHidden = true
         weatherIcon.isHidden = false
         temperatureLabel.isHidden = false
         windSpeedLabel.isHidden = false
@@ -75,21 +86,29 @@ class CurrentWeatherView: UIView {
 
     func showErrorMessage(_ message: String) {
         hideLoading()
-        timeLabel.text = message
-        timeLabel.isHidden = false
-        // maybe hide other elements
+        // Hide all weather content
+        weatherIcon.isHidden = true
+        temperatureLabel.isHidden = true
+        windSpeedLabel.isHidden = true
+        windDirectionArrow.isHidden = true
+        timeLabel.isHidden = true
+        // Show error label
+        errorLabel.text = message
+        errorLabel.isHidden = false
     }
     
     private func setupUI() {
         containerView.addSubview(loadingIndicator)
         addSubview(containerView)
         containerView.translatesAutoresizingMaskIntoConstraints = false
-        
+                
         [titleLabel, weatherIcon, temperatureLabel, windSpeedLabel, windDirectionArrow, timeLabel].forEach {
             // using autolayout
             $0.translatesAutoresizingMaskIntoConstraints = false
             containerView.addSubview($0)
         }
+        containerView.addSubview(errorLabel)
+
         
         temperatureLabel.font = .systemFont(ofSize: 33, weight: .bold)
         windSpeedLabel.font = .systemFont(ofSize: 14)
@@ -140,6 +159,12 @@ class CurrentWeatherView: UIView {
             //loading indicator
             loadingIndicator.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
             loadingIndicator.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            
+            //errorlabel
+            errorLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            errorLabel.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            errorLabel.leadingAnchor.constraint(greaterThanOrEqualTo: containerView.leadingAnchor, constant: 20),
+            errorLabel.trailingAnchor.constraint(lessThanOrEqualTo: containerView.trailingAnchor, constant: -20)
         ])
     }
     

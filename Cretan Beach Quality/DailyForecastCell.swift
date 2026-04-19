@@ -119,12 +119,23 @@ class DailyForecastCell: UITableViewCell {
         windLabel.text = "\(Int(forecast.maxWindSpeed)) km/h"
         expandButton.setTitle(isExpanded ? "▲" : "▼", for: .normal)
         
+        
+        // EDW SHKWNEI OPTIMIZATION. KALLIA NA TO EXW DHMIOURGHMENO kai na paiksw me hidden
         if isExpanded {
             if hourlyForecastView == nil {
                 hourlyForecastView = HourlyForecastView()
                 hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
                 
-                containerView.addSubview(hourlyForecastView!) // maybe handle this force unwrap differently, maybe with if let view = hourlyForecastView
+                //containerView.addSubview(hourlyForecastView!) // maybe handle this force unwrap differently, maybe with if let view = hourlyForecastView
+                
+                if let view = hourlyForecastView {
+                    containerView.addSubview(view)
+                } else {
+                    // handle the error - log->popup->return)
+                    print("Error: hourlyForecastView is nil when trying to add it")
+                    return
+                }
+                
                 
                 let bottomAnchor = hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
                 bottomAnchor.priority = UILayoutPriority(999) // meaning almost required, but can break if necessary

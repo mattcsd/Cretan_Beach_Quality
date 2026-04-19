@@ -100,7 +100,7 @@ class ViewModel{
         
         //Task inside. i thought its better to add here rather than wherever it is called. eg viewModel.viewdidload to contain something like task{dsdsa}
         
-        Task { /* i dont need [weak self] in guard let self = self else {return}*/
+        Task { /* do i need [weak self] in guard let self = self else {return}*/
             do {
                 let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
                 
