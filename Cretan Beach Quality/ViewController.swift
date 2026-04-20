@@ -6,9 +6,12 @@
 //
 
 import UIKit
+import Combine
 
 class ViewController: UIViewController {
     private let viewModel = ViewModel()
+    
+    private var cancellables = Set<AnyCancellable>()
     
     //MARK: UI Components
     private let tableView: UITableView = {
@@ -57,8 +60,8 @@ class ViewController: UIViewController {
         
         //helpers to prepare the communciation with viewmodel
         setupSearchController()
-        setupCallbacks()
-        
+        //setupCallbacks()
+        setupBindings()
         setupUI()
         setupRefreshControl()
         viewModel.loadBeaches()
@@ -75,7 +78,7 @@ class ViewController: UIViewController {
         definesPresentationContext = true
     }
     
-    private func setupCallbacks() {
+    /*private func setupCallbacks() {
         // callback for loading state
         viewModel.onLoadingChanged = { [weak self] isLoading in
             guard let self = self else { return }
@@ -106,6 +109,43 @@ class ViewController: UIViewController {
             guard let self = self else { return }
             self.showError(errorMessage)
         }
+    }*/
+    private func setupBindings() {
+        // subscribe to isLoading
+        viewModel.$isLoading
+            .receive(on: DispatchQueue.main)   //to ensure UI updates on main thread
+            .sink { [weak self] isLoading in
+                guard let self = self else { return }
+                if isLoading {
+                    if !self.refreshControl.isRefreshing {
+                        self.activityIndicator.startAnimating()
+                    }
+                } else {
+                    self.activityIndicator.stopAnimating()
+                    self.refreshControl.endRefreshing()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to displayedBeaches (data changes)
+        viewModel.$displayedBeaches
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.tableView.reloadData()
+                self?.tableView.isHidden = false
+                self?.errorLabel.isHidden = true
+                self?.retryButton.isHidden = true
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to errorMessage
+        viewModel.$errorMessage
+            .receive(on: DispatchQueue.main)
+            .compactMap { $0 }   // ignore nil
+            .sink { [weak self] errorMessage in
+                self?.showError(errorMessage)
+            }
+            .store(in: &cancellables)
     }
     
     //MARK: - UI Setup

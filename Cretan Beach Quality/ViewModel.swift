@@ -6,35 +6,57 @@
 //
 
 import Foundation
+import Combine
 
 //not yet, swiftUI //@Observable
 //combine, codeco(vpn)
 
 class ViewModel{
     // slot to inform controller that activityIndicator should be changed
-    // MARK: - Callbacks (communication to ViewController)
+    /*// MARK: - Callbacks (communication to ViewController)
     var onLoadingChanged: ((Bool) -> Void)?
     var onDataUpdated: (() -> Void)?
-    var onError: ((String) -> Void)?
+    var onError: ((String) -> Void)?*/
+    
+    // MARK: Publishers (expose state changes)
+    @Published var isLoading: Bool = false
+    @Published var errorMessage: String? = nil
+    @Published var displayedBeaches: [WaterQuality] = []
     
     // MARK: Private Data (only ViewModel can change)
-    private var allBeaches: [WaterQuality] = []
+    private var allBeaches: [WaterQuality] = [] {
+        didSet{updateDisplayedBeaches() }
+    }
     private var filteredBeaches: [WaterQuality] = []
     private var isSearching: Bool = false
+    private var searchQuery: String = ""
     
     
     //MARK: - Computed Properties for ViewController to read
     var numberOfBeaches: Int{
-        let count = isSearching ? filteredBeaches.count : allBeaches.count
-        return count
+        //let count = isSearching ? filteredBeaches.count : allBeaches.count
+        return displayedBeaches.count
     }
     
     func beach(at index: Int) -> WaterQuality {
-        return isSearching ? filteredBeaches[index] : allBeaches[index]
+        //return isSearching ? filteredBeaches[index] : allBeaches[index]
+        displayedBeaches[index]
     }
     
     
     // MARK: Helper methods
+    private func updateDisplayedBeaches(){
+        if isSearching && !searchQuery.isEmpty{
+            displayedBeaches = allBeaches.filter { item in
+                (item.coast ?? "").lowercased().contains(searchQuery.lowercased()) ||
+                (item.perunit ?? "").lowercased().contains(searchQuery.lowercased())
+            }
+        }else {
+            displayedBeaches = allBeaches
+        }
+    }
+    
+    
     func getCleanedBeachName(at index: Int) -> String {
         let item = beach(at: index)
         var cleanedName = (item.coast ?? "N/A")
@@ -89,12 +111,17 @@ class ViewModel{
     //MARK: Public Actions
     func loadBeaches(){
         //tell the viewcontroller: loading started
-        onLoadingChanged?(true)
+        //onLoadingChanged?(true)
+        
+        isLoading = true
+        errorMessage = nil
         
         let urlString = "https://data.gov.gr/api/v1/query/apdkriti-swimwater"
         guard let url = URL(string: urlString) else {
-            onLoadingChanged?(false)
-            onError?("Invalid URL")
+            //onLoadingChanged?(false)
+            //onError?("Invalid URL")
+            isLoading = false
+            errorMessage = "Invalid URL"
             return
         }
         
@@ -105,15 +132,19 @@ class ViewModel{
                 let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
                 
                 self.allBeaches = data
-                if self.isSearching {
-                    self.applySearchFilter()
-                }
+                self.isLoading = false
                 
-                self.onLoadingChanged?(false)
-                onDataUpdated?()
+                /*if self.isSearching {
+                    self.applySearchFilter()
+                }*/
+                
+                //self.onLoadingChanged?(false)
+                //onDataUpdated?()
             } catch {
-                self.onLoadingChanged?(false)
-                self.onError?(error.localizedDescription)
+                //self.onLoadingChanged?(false)
+                //self.onError?(error.localizedDescription)
+                self.isLoading = false
+                self.errorMessage = error.localizedDescription
             }
         }
     }
@@ -152,14 +183,17 @@ class ViewModel{
     }
     
     func searchBeaches(with query: String) {
-        if query.isEmpty {
+        /*if query.isEmpty {
             isSearching = false
             filteredBeaches = []
         } else {
             isSearching = true
             applySearchFilter(for: query)
         }
-        onDataUpdated?()  // tell ViewController: reload table
+        onDataUpdated?()  // tell ViewController: reload table*/
+        searchQuery = query
+        isSearching = !query.isEmpty
+        updateDisplayedBeaches()
     }
     
     
