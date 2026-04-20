@@ -11,7 +11,7 @@ class DetailViewController: UIViewController {
 
     // MARK: - ViewModel
     var viewModel: DetailViewModel!
-    //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say YES I HAVE CREATED THIS OUTSIDE OF HERE
+    //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say SINCE I HAVE CREATED THIS OUTSIDE OF HERE
     
     private let currentWeatherView = CurrentWeatherView()
     private let tableView = UITableView()
@@ -43,37 +43,27 @@ class DetailViewController: UIViewController {
         print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
         //TESTING ASYNC
         //viewModel.loadWeather()
+        
         Task {
             await viewModel.loadWeatherAsync()
         }
     }
     
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-        // an de to xw sprwxnei to header pros ta panw kai krybei to miso
-        // to rresize header if needed for rotation or dynamic font changes)
-        if let headerView = tableView.tableHeaderView {
-            let size = headerView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
-            if headerView.frame.size.height != size.height {
-                headerView.frame.size.height = size.height
-                tableView.tableHeaderView = headerView
-            }
-        }
-    }
-    
-    
     // MARK: callback setup
     private func setupCallbacks(){
         viewModel.onWeatherLoaded = {[weak self] in
-            guard let self = self else {return }
-            
-            //update current weather view
-            if let weather = self.viewModel.weatherData {
-                self.currentWeatherView.configure(with: weather)
+            Task {
+                await MainActor.run{
+                    guard let self = self else {return }
+                    
+                    //update current weather view
+                    if let weather = self.viewModel.weatherData {
+                        self.currentWeatherView.configure(with: weather)
+                    }
+                    //reload the forecast table
+                    self.tableView.reloadData()
+                }
             }
-            //reload the forecast table
-            self.tableView.reloadData()
         }
         
         viewModel.onError = { [weak self] errorMessage in
@@ -85,15 +75,23 @@ class DetailViewController: UIViewController {
             errorLabel.textAlignment = .center
             self?.currentWeatherView.addSubview(errorLabel)
             self?.currentWeatherView.showErrorMessage(errorMessage)*/
-            self?.currentWeatherView.showErrorMessage("Weather data unavailable")
+            Task {
+                await MainActor.run{
+                    self?.currentWeatherView.showErrorMessage("Weather data unavailable")
+                }
+            }
         }
         
         viewModel.onLoadingChanged = { [weak self] isLoading in
-          if isLoading {
-              self?.currentWeatherView.showLoading()
-          } else {
-              self?.currentWeatherView.hideLoading()
-          }
+            Task{
+                await MainActor.run{
+                    if isLoading {
+                        self?.currentWeatherView.showLoading()
+                    } else {
+                        self?.currentWeatherView.hideLoading()
+                    }
+                }
+            }
         }
     }
     
@@ -123,10 +121,13 @@ class DetailViewController: UIViewController {
             divider,
             weatherStack
         ])
+        
         mainStack.axis = .vertical
         mainStack.spacing = 20
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         
+        
+        headerView.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(mainStack)
         
         NSLayoutConstraint.activate([

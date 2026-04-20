@@ -12,12 +12,6 @@ import Combine
 //combine, codeco(vpn)
 
 class ViewModel{
-    // slot to inform controller that activityIndicator should be changed
-    /*// MARK: - Callbacks (communication to ViewController)
-    var onLoadingChanged: ((Bool) -> Void)?
-    var onDataUpdated: (() -> Void)?
-    var onError: ((String) -> Void)?*/
-    
     // MARK: Publishers (expose state changes)
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
@@ -30,8 +24,7 @@ class ViewModel{
     private var filteredBeaches: [WaterQuality] = []
     private var isSearching: Bool = false
     private var searchQuery: String = ""
-    
-    
+        
     //MARK: - Computed Properties for ViewController to read
     var numberOfBeaches: Int{
         //let count = isSearching ? filteredBeaches.count : allBeaches.count
@@ -42,7 +35,6 @@ class ViewModel{
         //return isSearching ? filteredBeaches[index] : allBeaches[index]
         displayedBeaches[index]
     }
-    
     
     // MARK: Helper methods
     private func updateDisplayedBeaches(){
@@ -55,7 +47,6 @@ class ViewModel{
             displayedBeaches = allBeaches
         }
     }
-    
     
     func getCleanedBeachName(at index: Int) -> String {
         let item = beach(at: index)
@@ -78,7 +69,6 @@ class ViewModel{
         return (title, subtitle)
     }
     
-    
     //MARK: NAvigationHandling
     func handleBeachSelection(at index: Int) async -> (item: WaterQuality, latitude: Double?, longitude: Double?){
         
@@ -86,33 +76,18 @@ class ViewModel{
         let cleanedName = getCleanedBeachName(at: index)
         let region = getRegion(at: index)
         
-        //Task {
         do {
             let (latitude, longitude) = try await GeocodingService.shared.geocode(beachName: cleanedName, region: region)
                 return (item, latitude, longitude)
         } catch {
-            // stil continue but with no coordinates. the one who receives it()
             print("geocoding error \(error)")
-            return (item, nil, nil)
+            return (item, nil, nil) //edw mallon prepei na to tsekarei o caller kai na throwarei
         }
-        //}
-        
-        /*
-        GeocodingService.shared.geocode(beachName: cleanedName, region: region) { result in
-            switch result{
-            case .success(let (latitude, longitude)):
-                completion(item, latitude, longitude)
-            case .failure:
-                completion(item, nil, nil)
-            }
-        }*/
     }
     
     //MARK: Public Actions
     func loadBeaches(){
-        //tell the viewcontroller: loading started
-        //onLoadingChanged?(true)
-        
+        //these are observed so the viewcontroller "listens"
         isLoading = true
         errorMessage = nil
         
@@ -125,24 +100,17 @@ class ViewModel{
             return
         }
         
-        //Task inside. i thought its better to add here rather than wherever it is called. eg viewModel.viewdidload to contain something like task{dsdsa}
-        
-        Task { /* do i need [weak self] in guard let self = self else {return}*/
+        Task { /* NOT do i need [weak self] in guard let self = self else {return} nomizw naiu giati an o user bgei kai to network call akoma petaei?*/
             do {
                 let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
                 
                 self.allBeaches = data
                 self.isLoading = false
                 
-                /*if self.isSearching {
-                    self.applySearchFilter()
-                }*/
+                //an edw ekana kati heavy tha eprepe explixitly na tou pw meine sto background thread!
                 
-                //self.onLoadingChanged?(false)
-                //onDataUpdated?()
             } catch {
-                //self.onLoadingChanged?(false)
-                //self.onError?(error.localizedDescription)
+                //again 
                 self.isLoading = false
                 self.errorMessage = error.localizedDescription
             }
@@ -197,7 +165,6 @@ class ViewModel{
     }
     
     
-    // MARK: - Private Helpers
     private func applySearchFilter(for query: String? = nil){
         let searchText = (query ?? "").lowercased()
         if searchText.isEmpty {

@@ -126,6 +126,7 @@ class DailyForecastCell: UITableViewCell {
                 hourlyForecastView = HourlyForecastView()
                 hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
                 
+                
                 //containerView.addSubview(hourlyForecastView!) // maybe handle this force unwrap differently, maybe with if let view = hourlyForecastView
                 
                 if let view = hourlyForecastView {

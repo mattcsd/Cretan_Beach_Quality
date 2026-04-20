@@ -25,6 +25,7 @@ class GeocodingService {
         // fetch async returns the response directly OR throws an error
         let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(from: url)
         
+        //REMEMBER TO check response 
         guard let location = response.geonames?.first,
               let lat = location.latitude,
               let lon = location.longitude else {

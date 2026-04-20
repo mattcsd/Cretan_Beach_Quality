@@ -62,11 +62,11 @@ class ViewController: UIViewController {
         setupSearchController()
         //setupCallbacks()
         setupBindings()
+        
         setupUI()
         setupRefreshControl()
         viewModel.loadBeaches()
     }
-    
     
     // MARK: - Setup Methods
     private func setupSearchController() {
@@ -78,42 +78,11 @@ class ViewController: UIViewController {
         definesPresentationContext = true
     }
     
-    /*private func setupCallbacks() {
-        // callback for loading state
-        viewModel.onLoadingChanged = { [weak self] isLoading in
-            guard let self = self else { return }
-            if isLoading {
-                // if refresh control is already refreshing, don't start the normal spinner
-                if !self.refreshControl.isRefreshing {
-                    self.activityIndicator.startAnimating()
-                }
-            } else {
-                self.activityIndicator.stopAnimating()
-                self.refreshControl.endRefreshing()
-            }
-        }
-        
-        // callback for data update (success case)
-        //not keeping it open after the receive
-        viewModel.onDataUpdated = { [weak self] in
-            guard let self = self else { return }
-            print("DEBUG: onDataUpdated called")
-            self.tableView.reloadData()
-            self.tableView.isHidden = false
-            self.errorLabel.isHidden = true
-            self.retryButton.isHidden = true
-        }
-        
-        // callback for error
-        viewModel.onError = { [weak self] errorMessage in
-            guard let self = self else { return }
-            self.showError(errorMessage)
-        }
-    }*/
     private func setupBindings() {
         // subscribe to isLoading
         viewModel.$isLoading
-            .receive(on: DispatchQueue.main)   //to ensure UI updates on main thread
+        //prin mpei den einai se main thread. otan ftanei edw theloume na ensure oti einai/thampei main thread.
+            .receive(on: DispatchQueue.main)   // ensuring UI updates on main thread
             .sink { [weak self] isLoading in
                 guard let self = self else { return }
                 if isLoading {
@@ -127,7 +96,7 @@ class ViewController: UIViewController {
             }
             .store(in: &cancellables)
 
-        // Subscribe to displayedBeaches (data changes)
+        // subscribe to displayedBeaches data changing
         viewModel.$displayedBeaches
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -138,10 +107,11 @@ class ViewController: UIViewController {
             }
             .store(in: &cancellables)
 
-        // Subscribe to errorMessage
+        // subscribe to errorMessage
         viewModel.$errorMessage
             .receive(on: DispatchQueue.main)
-            .compactMap { $0 }   // ignore nil
+        
+            .compactMap { $0 }   // ignore nil, ama einai mh steileis sto set
             .sink { [weak self] errorMessage in
                 self?.showError(errorMessage)
             }
@@ -154,7 +124,6 @@ class ViewController: UIViewController {
         view.addSubview(activityIndicator)
         view.addSubview(errorLabel)
         view.addSubview(retryButton)
-        
         
         tableView.delegate = self
         tableView.dataSource = self
@@ -245,25 +214,27 @@ extension ViewController: UITableViewDelegate {
             cell.accessoryView = spinner
         }
         
-        // Use Task to call async function
+        // need Task to call async function
         Task {
-            // Await the result from ViewModel
+            // await the result from ViewModel
             let result = await viewModel.handleBeachSelection(at: indexPath.row)
             
-            // Remove spinner (back on main thread)
-            if let cell = tableView.cellForRow(at: indexPath) {
-                cell.accessoryView = nil
+            await MainActor.run {
+                // Remove spinner (back on main thread)
+                if let cell = tableView.cellForRow(at: indexPath) {
+                    cell.accessoryView = nil
+                }
+                
+                // Create and navigate to DetailViewController
+                let detailVC = DetailViewController()
+                let detViewModel = DetailViewModel(
+                    beachItem: result.item,
+                    latitude: result.latitude,
+                    longitude: result.longitude
+                )
+                detailVC.viewModel = detViewModel
+                self.navigationController?.pushViewController(detailVC, animated: true)
             }
-            
-            // Create and navigate to DetailViewController
-            let detailVC = DetailViewController()
-            let detViewModel = DetailViewModel(
-                beachItem: result.item,
-                latitude: result.latitude,
-                longitude: result.longitude
-            )
-            detailVC.viewModel = detViewModel
-            self.navigationController?.pushViewController(detailVC, animated: true)
         }
     }
 }
