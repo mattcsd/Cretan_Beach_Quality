@@ -6,9 +6,12 @@
 //
 
 import UIKit
+import Combine
 
 class DetailViewController: UIViewController {
-
+    
+    private var cancellables = Set<AnyCancellable>()
+    
     // MARK: - ViewModel
     var viewModel: DetailViewModel!
     //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say SINCE I HAVE CREATED THIS OUTSIDE OF HERE
@@ -37,7 +40,7 @@ class DetailViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupCallbacks()
+        setupBindings()
         configureWaterQuality()
         currentWeatherView.showLoading()
         print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
@@ -49,51 +52,50 @@ class DetailViewController: UIViewController {
         }
     }
     
-    // MARK: callback setup
-    private func setupCallbacks(){
-        viewModel.onWeatherLoaded = {[weak self] in
-            Task {
-                await MainActor.run{
-                    guard let self = self else {return }
-                    
-                    //update current weather view
-                    if let weather = self.viewModel.weatherData {
-                        self.currentWeatherView.configure(with: weather)
-                    }
-                    //reload the forecast table
-                    self.tableView.reloadData()
-                }
+    // MARK: bindings setup
+    private func setupBindings(){
+        viewModel.$dailyForecasts
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.tableView.reloadData()
             }
-        }
+            .store(in: &cancellables)
         
-        viewModel.onError = { [weak self] errorMessage in
-            /*print("Weather error: \(errorMessage)")
-            // show simple error label inside the weather view
-            let errorLabel = UILabel()
-            errorLabel.text = "Weather data unavailable"
-            errorLabel.textColor = .secondaryLabel
-            errorLabel.textAlignment = .center
-            self?.currentWeatherView.addSubview(errorLabel)
-            self?.currentWeatherView.showErrorMessage(errorMessage)*/
-            Task {
-                await MainActor.run{
-                    self?.currentWeatherView.showErrorMessage("Weather data unavailable")
+        viewModel.$weatherData
+            .receive(on: DispatchQueue.main)
+            .sink{ [weak self] weatherData in
+                guard let self = self else {return }
+                
+                //update current weather view
+                if let weather = self.viewModel.weatherData {
+                    self.currentWeatherView.configure(with: weather)
                 }
+                //reload the forecast table
+                self.tableView.reloadData()
             }
-        }
+            .store(in: &cancellables)
         
-        viewModel.onLoadingChanged = { [weak self] isLoading in
-            Task{
-                await MainActor.run{
-                    if isLoading {
-                        self?.currentWeatherView.showLoading()
-                    } else {
-                        self?.currentWeatherView.hideLoading()
-                    }
+        viewModel.$onError
+            .receive(on: DispatchQueue.main)
+            .compactMap{ $0 }
+            .sink { [weak self] errorMessage in
+                self?.currentWeatherView.showErrorMessage("Weather data unavailable")
+            
+            }
+            .store(in: &cancellables)
+        
+        viewModel.$det_isLoading
+            .receive(on: DispatchQueue.main)
+            .sink{ [weak self] det_isLoading in
+                if det_isLoading {
+                    self?.currentWeatherView.showLoading()
+                } else {
+                    self?.currentWeatherView.hideLoading()
                 }
             }
-        }
+            .store(in: &cancellables)
     }
+    
     
     // MARK: - Header View Creation
 
@@ -235,15 +237,6 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
         viewModel.toggleExpanded(at: indexPath.row)
         tableView.reloadRows(at: [indexPath], with: .automatic)
     }
-    /*func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        print("--- DEBUG START: Row Clicked ---")
-        print("DEBUG: [Click] User tapped row: \(indexPath.row)")
-        viewModel.toggleExpanded(at: indexPath.row)
-        //tableView.beginUpdates()
-        //tableView.endUpdates()
-        tableView.reloadRows(at: [indexPath], with: .fade)
-        print("--- DEBUG END ---")
-    }*/
 }
 
 // MARK: - DailyForecastCellDelegate

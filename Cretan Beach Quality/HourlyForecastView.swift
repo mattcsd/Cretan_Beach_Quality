@@ -8,22 +8,20 @@
 import UIKit
 
 class HourlyForecastView: UIView {
+    private var forecasts: [HourlyForecast] = []
     
-    private let scrollView: UIScrollView = {
-        let scroll = UIScrollView()
-        scroll.showsHorizontalScrollIndicator = false
-        return scroll
-    }()
-    
-    private let contentView = UIView()
-    
-    // stack for the days
-    private let stackView: UIStackView = {
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.spacing = 12
-        stack.distribution = .fillEqually
-        return stack
+    //need var so we can change it
+    private var collectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 70, height: 100)
+        layout.minimumLineSpacing = 12
+        layout.minimumInteritemSpacing = 12
+        
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.showsHorizontalScrollIndicator = false
+        cv.backgroundColor = .clear
+        return cv
     }()
     
     override init(frame: CGRect) {
@@ -35,96 +33,54 @@ class HourlyForecastView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func setupUI() {
+    private func setupUI(){
         backgroundColor = .systemGray5
         layer.cornerRadius = 12
         
-        addSubview(scrollView)
-        scrollView.addSubview(contentView)
-        contentView.addSubview(stackView)
+        // create flow layout
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 70, height: 100) //fixed card size
+        layout.minimumLineSpacing = 12
+        layout.sectionInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
         
-        [scrollView, contentView, stackView].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-        }
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.backgroundColor = .clear
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.register(HourlyForecastCell.self, forCellWithReuseIdentifier: HourlyForecastCell.identifier)
+        
+        addSubview(collectionView)
+        
+        NSLayoutConstraint.activate([
+             collectionView.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+             collectionView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+             collectionView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+             collectionView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+             collectionView.heightAnchor.constraint(equalToConstant: 100)   // keep fixed height as before
+         ])
+     }
+    
+    func configure(with forecasts: [HourlyForecast], for date: Date){
+        self.forecasts = forecasts
+        collectionView.reloadData()
+    }
+}
 
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
-            // superly needed, sets the height for the hourly
-            scrollView.heightAnchor.constraint(equalToConstant: 100),
-            
-            contentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            
-            stackView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            stackView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            stackView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
-        ])
+// MARK: UICollectionView DataSource and Delegate
+extension HourlyForecastView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        forecasts.count
     }
     
-    func configure(with forecasts: [HourlyForecast], for date: Date) {
-        // clear any existing views
-        stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        
-        for forecast in forecasts {
-            let hourView = createHourlyView(forecast)
-            stackView.addArrangedSubview(hourView)
-            hourView.widthAnchor.constraint(equalToConstant: 70).isActive = true
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: HourlyForecastCell.identifier, for: indexPath) as? HourlyForecastCell else {
+            return UICollectionViewCell()
         }
-    }
-    
-    private func createHourlyView(_ forecast: HourlyForecast) -> UIView {
-        let container = UIView()
-        container.backgroundColor = .systemBackground
-        container.layer.cornerRadius = 8
-        
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.alignment = .center
-        stackView.spacing = 4
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        let timeLabel = UILabel()
-        timeLabel.text = forecast.time
-        timeLabel.font = .systemFont(ofSize: 12, weight: .medium)
-        timeLabel.textColor = .secondaryLabel
-        
-        let iconImageView = UIImageView()
-        iconImageView.image = UIImage(systemName: forecast.imageName)
-        iconImageView.contentMode = .scaleAspectFit
-        iconImageView.tintColor = .label
-        
-        let tempLabel = UILabel()
-        tempLabel.text = "\(Int(forecast.temperature))°"
-        tempLabel.font = .systemFont(ofSize: 14, weight: .semibold)
-        
-        let windLabel = UILabel()
-        windLabel.text = "\(Int(forecast.windSpeed))"
-        windLabel.font = .systemFont(ofSize: 10)
-        windLabel.textColor = .secondaryLabel
-        
-        stackView.addArrangedSubview(timeLabel)
-        stackView.addArrangedSubview(iconImageView)
-        stackView.addArrangedSubview(tempLabel)
-        stackView.addArrangedSubview(windLabel)
-        
-        container.addSubview(stackView)
-        
-        NSLayoutConstraint.activate([
-            stackView.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-            stackView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 4),
-            stackView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -4),
-            stackView.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
-            
-            iconImageView.widthAnchor.constraint(equalToConstant: 24),
-            iconImageView.heightAnchor.constraint(equalToConstant: 24)
-        ])
-        
-        return container
+        let forecast = forecasts[indexPath.row]
+        cell.configure(with: forecast)
+        return cell
     }
 }

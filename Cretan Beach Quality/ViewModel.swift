@@ -11,6 +11,7 @@ import Combine
 //not yet, swiftUI //@Observable
 //combine, codeco(vpn)
 
+
 class ViewModel{
     // MARK: Publishers (expose state changes)
     @Published var isLoading: Bool = false

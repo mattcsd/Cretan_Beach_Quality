@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 class DetailViewModel{
     // MARK: - data(private set with init)
@@ -14,14 +15,14 @@ class DetailViewModel{
     private let beachLongitude: Double?
     
     // (set) used so only this instance can write to these, everyone can (get)
-    private(set) var weatherData: WeatherResponse?
-    private(set) var dailyForecasts: [DailyForecast] = []
+    //private(set) var weatherData: WeatherResponse?
     private(set) var expandedIndex: Int?
     
-    //MARK: callbacks
-    var onWeatherLoaded: (() -> Void)?
-    var onError: ((String) -> Void)?
-    var onLoadingChanged: ((Bool) -> Void)?
+    //MARK: listeners/announcers
+    @Published var dailyForecasts: [DailyForecast] = []
+    @Published var weatherData: WeatherResponse?
+    @Published var onError: String? = nil
+    @Published var det_isLoading: Bool = false
     
     
     //MARK: computed properties for View
@@ -42,51 +43,27 @@ class DetailViewModel{
         self.beachLongitude = longitude
     }
     
-    // MARK: Actions
-    /*func loadWeather() {
-        guard let lat = beachLatitude, let lon = beachLongitude else {
-            onError?("Location not available")
-            return
-        }
-        
-        onLoadingChanged?(true)
-        
-        NetworkManager.shared.fetchWeather(latitude: lat, longitude: lon) { [weak self] result in
-            // bgainei giati hdh exei mpei sto main apo to networkmanager.fetch??
-            
-            //DispatchQueue.main.async {
-                self?.onLoadingChanged?(false)
-                switch result {
-                case .success(let weather):
-                    self?.weatherData = weather
-                    self?.dailyForecasts = weather.getDailyForecasts()
-                    self?.onWeatherLoaded?()
-                case .failure(let error):
-                    self?.onError?(error.localizedDescription)
-              //  }
-            }
-        }
-    }*/
-    
     //MARK: async/await version==========================
     func loadWeatherAsync() async {
         guard let lat = beachLatitude, let lon = beachLongitude else {
-            onError?("Location not available")
+            onError = "Location not available"
             return
         }
         print("ASYNc CALLED.detailviewModel")
-        onLoadingChanged?(true)
+        self.det_isLoading = true
         
         do {
             let weather = try await NetworkManager.shared.fetchWeatherAsync(latitude: lat, longitude: lon)
+            //efoson einai published tha to mathei monos tou
             self.weatherData = weather
             self.dailyForecasts = weather.getDailyForecasts()
-            self.onLoadingChanged?(false)
-            self.onWeatherLoaded?()
+            self.det_isLoading = false
+            /* pleon me to self.weatherData = weather*/
+            //self.onWeatherLoaded?()
             
         } catch {
-            self.onLoadingChanged?(false)
-            self.onError?(error.localizedDescription)
+            self.det_isLoading = false
+            self.onError = error.localizedDescription
         }
     }
     //===================================end async/await
