@@ -53,7 +53,10 @@ class DetailViewModel{
         self.det_isLoading = true
         
         do {
-            let weather = try await NetworkManager.shared.fetchWeatherAsync(latitude: lat, longitude: lon)
+            //let weather = try await NetworkManager.shared.fetchWeatherAsync(latitude: lat, longitude: lon)
+            let request = WeatherRequest(latitude: lat, longitude: lon)
+            let weather = try await NetworkManager.shared.fetchAsync(request)
+            
             //efoson einai published tha to mathei monos tou
             self.weatherData = weather
             self.dailyForecasts = weather.getDailyForecasts()

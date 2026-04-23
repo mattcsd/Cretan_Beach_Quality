@@ -23,9 +23,11 @@ class GeocodingService {
             throw NSError(domain: "GeocodingService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
         }
         // fetch async returns the response directly OR throws an error
-        let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(from: url)
+        //let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(from: url)
+        let request = GeocodingRequest(query: "falasarna")
+        let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(request)
         
-        //REMEMBER TO check response 
+        //REMEMBER TO check response
         guard let location = response.geonames?.first,
               let lat = location.latitude,
               let lon = location.longitude else {

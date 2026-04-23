@@ -76,13 +76,24 @@ class ViewModel{
         let item = beach(at: index)
         let cleanedName = getCleanedBeachName(at: index)
         let region = getRegion(at: index)
-        
+        let searchQuery = "\(cleanedName) \(region)"
+
         do {
-            let (latitude, longitude) = try await GeocodingService.shared.geocode(beachName: cleanedName, region: region)
-                return (item, latitude, longitude)
+            let request = GeocodingRequest(query: searchQuery)
+            let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(request)
+            
+            guard let location = response.geonames?.first,
+                  let lat = location.latitude,
+                  let lon = location.longitude else {
+                print("No coordinates found for \(searchQuery)")
+                return (item, nil, nil)
+            }
+            print("==========RECEIVED GEOCODE FOR \(searchQuery) with lat, long \(lat), \(lon)")
+            return (item, lat, lon)
+            
         } catch {
-            print("geocoding error \(error)")
-            return (item, nil, nil) //edw mallon prepei na to tsekarei o caller kai na throwarei
+            print("Geocoding error: \(error)")
+            return (item, nil, nil)
         }
     }
     
@@ -92,18 +103,20 @@ class ViewModel{
         isLoading = true
         errorMessage = nil
         
-        let urlString = "https://data.gov.gr/api/v1/query/apdkriti-swimwater"
+        /*let urlString = "https://data.gov.gr/api/v1/query/apdkriti-swimwater"
         guard let url = URL(string: urlString) else {
             //onLoadingChanged?(false)
             //onError?("Invalid URL")
             isLoading = false
             errorMessage = "Invalid URL"
             return
-        }
+        }*/
         
         Task { /* NOT do i need [weak self] in guard let self = self else {return} nomizw naiu giati an o user bgei kai to network call akoma petaei?*/
             do {
-                let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
+                //let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
+                let request = BeachListRequest()
+                let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(request)
                 
                 self.allBeaches = data
                 self.isLoading = false
@@ -117,34 +130,7 @@ class ViewModel{
             }
         }
     }
-        /* OLD FETCH
-        NetworkManager.shared.fetch(from: url) { [weak self] (result: Result<[WaterQuality], Error>) in
-            //check if exists or has corrupted/failer
-            guard let self = self else {return}
-            
-            //tell viewcontroller: loading has finished (either success or error)
-            self.onLoadingChanged?(false)
-            
-            switch result {
-            case .success(let data):
-                //if currently searching, re-apply search filter
-                if self.isSearching {
-                    self.applySearchFilter()
-                }
-                print("DEBUG: received \(data.count) beaches")
-                //assign the data
-                self.allBeaches = data
-                print("DEBUG: allBeaches now has \(self.allBeaches.count) beaches")
-                
-                //tell viewcontroller: data is ready
-                self.onDataUpdated?()
-            case .failure(let error):
-                self.onError?(error.localizedDescription)
-            }
-        }
-                
-    }*/
-    
+
     
     func refreshBeaches(){
         //same as loadbeaches, but viewcontroller might treat it differently (puultorefresh)

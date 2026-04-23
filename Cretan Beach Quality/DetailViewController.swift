@@ -52,6 +52,25 @@ class DetailViewController: UIViewController {
         }
     }
     
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        if let headerView = tableView.tableHeaderView {
+            // Update width to match table view
+            var frame = headerView.frame
+            frame.size.width = tableView.bounds.width
+            headerView.frame = frame
+            
+            // Then update height (as before)
+            let size = headerView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+            if frame.size.height != size.height {
+                frame.size.height = size.height
+                headerView.frame = frame
+                tableView.tableHeaderView = headerView
+            }
+        }
+    }
+    
     // MARK: bindings setup
     private func setupBindings(){
         viewModel.$dailyForecasts
@@ -101,6 +120,7 @@ class DetailViewController: UIViewController {
 
     private func createTableHeaderView() -> UIView {
         let headerView = UIView()
+        //headerView.backgroundColor = .red
         
         // water quality stack
         let waterQualityStack = UIStackView(arrangedSubviews: [
@@ -129,7 +149,8 @@ class DetailViewController: UIViewController {
         mainStack.translatesAutoresizingMaskIntoConstraints = false
         
         
-        headerView.translatesAutoresizingMaskIntoConstraints = false
+        //edw?? ayto to balame me allakse alla mou ta xalaei pali. des
+        //headerView.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(mainStack)
         
         NSLayoutConstraint.activate([
@@ -172,7 +193,12 @@ class DetailViewController: UIViewController {
         
         // create and set the header view
         let headerView = createTableHeaderView()
+        var frame = headerView.frame
+        frame.size.width = tableView.bounds.width
+        headerView.frame = frame
         tableView.tableHeaderView = headerView
+        
+        //tableView.tableHeaderView = headerView
         
         // force layout to calculate header height
         headerView.setNeedsLayout()

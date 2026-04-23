@@ -218,7 +218,7 @@ extension ViewController: UITableViewDelegate {
         Task {
             // await the result from ViewModel
             let result = await viewModel.handleBeachSelection(at: indexPath.row)
-            
+            print("from viewcontroller!! item:\(result.item), lat:\(result.latitude), lon:\(result.longitude)")
             await MainActor.run {
                 // Remove spinner (back on main thread)
                 if let cell = tableView.cellForRow(at: indexPath) {
