@@ -7,6 +7,7 @@
 import Foundation
 
 protocol APIRequest {
+    //inheriting from Decodable
     associatedtype Response: Decodable
     var url: URL { get }
     var method: String { get } // "GET", "POST"

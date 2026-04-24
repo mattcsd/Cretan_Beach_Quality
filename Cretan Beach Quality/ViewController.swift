@@ -195,7 +195,7 @@ extension ViewController: UITableViewDataSource {
         
         //apply configurations
         cell.contentConfiguration = config
-        //bazei to gkribelaki sta deksia
+        //bazei to gkri belaki sta deksia
         cell.accessoryType = .disclosureIndicator
         
         return cell

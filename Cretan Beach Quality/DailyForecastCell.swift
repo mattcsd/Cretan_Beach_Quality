@@ -21,6 +21,9 @@ class DailyForecastCell: UITableViewCell {
     private var hourlyForecastView: HourlyForecastView?
     private var isExpanded = false
     
+    //so the daily view doesnt break when i collapse a 
+    private var hourlyHeightConstraint: NSLayoutConstraint?
+
     // container to fill days in
     private let containerView: UIView = {
         let view = UIView()
@@ -108,6 +111,27 @@ class DailyForecastCell: UITableViewCell {
     // listener for expand click
     @objc private func expandButtonTapped() {
         delegate?.didTapExpandButton(for: self)
+        
+        // could 
+    }
+    
+    private func setupHourlyView() {
+        hourlyForecastView = HourlyForecastView()
+        hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(hourlyForecastView!)
+        
+        let bottomAnchor = hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
+        bottomAnchor.priority = .defaultHigh
+        
+        hourlyHeightConstraint = hourlyForecastView!.heightAnchor.constraint(equalToConstant: 0)
+        hourlyHeightConstraint?.isActive = true // arxika einai 0 (hidden)
+        
+        NSLayoutConstraint.activate([
+            hourlyForecastView!.topAnchor.constraint(equalTo: weatherIcon.bottomAnchor, constant: 12),
+            hourlyForecastView!.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
+            hourlyForecastView!.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+            bottomAnchor
+        ])
     }
     
     func configure(with forecast: DailyForecast, isExpanded: Bool) {
@@ -119,46 +143,54 @@ class DailyForecastCell: UITableViewCell {
         windLabel.text = "\(Int(forecast.maxWindSpeed)) km/h"
         expandButton.setTitle(isExpanded ? "▲" : "▼", for: .normal)
         
+        //lazy creation
+        if hourlyForecastView == nil {
+            setupHourlyView()
+        }
         
         // EDW SHKWNEI OPTIMIZATION. KALLIA NA TO EXW DHMIOURGHMENO kai na paiksw me hidden
         if isExpanded {
-            if hourlyForecastView == nil {
-                hourlyForecastView = HourlyForecastView()
-                hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
-                
-                
-                //containerView.addSubview(hourlyForecastView!) // maybe handle this force unwrap differently, maybe with if let view = hourlyForecastView
-                
-                if let view = hourlyForecastView {
-                    containerView.addSubview(view)
-                } else {
-                    // handle the error - log->popup->return)
-                    print("Error: hourlyForecastView is nil when trying to add it")
-                    return
-                }
-                
-                
-                let bottomAnchor = hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
-                bottomAnchor.priority = UILayoutPriority(999) // meaning almost required, but can break if necessary
-                
-                NSLayoutConstraint.activate([
-                    hourlyForecastView!.topAnchor.constraint(equalTo: weatherIcon.bottomAnchor, constant: 12),
-                    hourlyForecastView!.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
-                    hourlyForecastView!.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
-                    bottomAnchor
-                ])
-            }
+            /*if hourlyForecastView == nil {
+             hourlyForecastView = HourlyForecastView()
+             hourlyForecastView?.translatesAutoresizingMaskIntoConstraints = false
+             
+             
+             //containerView.addSubview(hourlyForecastView!) // maybe handle this force unwrap differently, maybe with if let view = hourlyForecastView
+             
+             if let view = hourlyForecastView {
+             containerView.addSubview(view)
+             } else {
+             // handle the error - log->popup->return)
+             print("Error: hourlyForecastView is nil when trying to add it")
+             return
+             }
+             
+             
+             let bottomAnchor = hourlyForecastView!.bottomAnchor.constraint(equalTo: containerView.bottomAnchor, constant: -12)
+             bottomAnchor.priority = UILayoutPriority(999) // meaning almost required, but can break if necessary
+             
+             NSLayoutConstraint.activate([
+             hourlyForecastView!.topAnchor.constraint(equalTo: weatherIcon.bottomAnchor, constant: 12),
+             hourlyForecastView!.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 8),
+             hourlyForecastView!.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -8),
+             bottomAnchor
+             ])
+             }
+             hourlyForecastView?.configure(with: forecast.hourlyForecasts, for: forecast.date)
+             hourlyForecastView?.isHidden = false*/
             hourlyForecastView?.configure(with: forecast.hourlyForecasts, for: forecast.date)
+            hourlyHeightConstraint?.constant = 120 //set fixed height
             hourlyForecastView?.isHidden = false
         } else {
             //BATCH UPDATE
             //hourlyForecastView?.isHidden = true // messes up the view. afinei keno to expanded hourly
             //temp fix
-            hourlyForecastView?.removeFromSuperview()
-            hourlyForecastView = nil // keeping memory clear. not efficient though
+            
+            //hourlyForecastView?.removeFromSuperview()
+            //hourlyForecastView = nil // keeping memory clear. not efficient though
+            hourlyHeightConstraint?.constant = 0
+            hourlyForecastView?.isHidden = true
         }
-        
-        //force layout update
         setNeedsLayout()
         layoutIfNeeded()
     }

@@ -59,7 +59,7 @@ class HourlyForecastView: UIView {
              collectionView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
              collectionView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
              collectionView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
-             collectionView.heightAnchor.constraint(equalToConstant: 100)   // keep fixed height as before
+             //collectionView.heightAnchor.constraint(equalToConstant: 100)   // keep fixed height as before
          ])
      }
     
