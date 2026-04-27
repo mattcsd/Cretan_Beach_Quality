@@ -60,10 +60,13 @@ class HourlyForecastView: UIView {
              collectionView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
              collectionView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
              //collectionView.heightAnchor.constraint(equalToConstant: 100)   // keep fixed height as before
+             heightAnchor.constraint(equalToConstant: 110)   // 100 (item height) + 8+? = 110
+
          ])
      }
     
     func configure(with forecasts: [HourlyForecast], for date: Date){
+        print("DEBUG: HourlyForecastView configure with \(forecasts.count) forecasts")
         self.forecasts = forecasts
         collectionView.reloadData()
     }

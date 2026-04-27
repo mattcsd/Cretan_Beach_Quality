@@ -11,15 +11,16 @@ import Combine
 class DetailViewController: UIViewController {
     
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - ViewModel
     var viewModel: DetailViewModel!
     //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say SINCE I HAVE CREATED THIS OUTSIDE OF HERE
-    
+
+    private var rows: [RowType] = []
     private let currentWeatherView = CurrentWeatherView()
     private let tableView = UITableView()
     
-    private var weatherErrorLabel: UILabel?
+    //private var weatherErrorLabel: UILabel?
     
     //water quality section
     private let waterQualityTitle: UILabel = {
@@ -43,7 +44,7 @@ class DetailViewController: UIViewController {
         setupBindings()
         configureWaterQuality()
         currentWeatherView.showLoading()
-        print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
+        //print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
         //TESTING ASYNC
         //viewModel.loadWeather()
         
@@ -76,6 +77,7 @@ class DetailViewController: UIViewController {
         viewModel.$dailyForecasts
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
+                self?.rebuildRows()
                 self?.tableView.reloadData()
             }
             .store(in: &cancellables)
@@ -168,13 +170,16 @@ class DetailViewController: UIViewController {
     private func setupUI() {
         view.backgroundColor = .white
         
+        //adding the 2 cell types
+        tableView.register(DailySummaryCell.self, forCellReuseIdentifier: DailySummaryCell.identifier)
+        tableView.register(HourlyDetailCell.self, forCellReuseIdentifier: HourlyDetailCell.identifier)
+        
         //  table view configurations
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.backgroundColor = .clear
         tableView.separatorStyle = .none
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 70
-        tableView.register(DailyForecastCell.self, forCellReuseIdentifier: DailyForecastCell.identifier)
         
         // seet delegate and data source
         tableView.delegate = self
@@ -212,6 +217,21 @@ class DetailViewController: UIViewController {
         }
     }
     
+    enum RowType {
+        case summary(Int, DailyForecast)
+        case detail(Int, DailyForecast)
+    }
+    
+    private func rebuildRows(){
+        rows = []
+        for (index, forecast) in viewModel.dailyForecasts.enumerated() {
+            rows.append(.summary(index, forecast))
+            if viewModel.isExpanded(at: index){
+                rows.append(.detail(index, forecast))
+            }
+        }
+    }
+    
     // simple gray divider
     private func createDivider () -> UIView {
         let divider = UIView()
@@ -234,11 +254,25 @@ class DetailViewController: UIViewController {
 extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return viewModel.numberOfForecastDays
+        return rows.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: DailyForecastCell.identifier, for: indexPath) as? DailyForecastCell else {
+        switch rows[indexPath.row]{
+        case .summary(let idx, let forecast):
+            let cell = tableView.dequeueReusableCell(withIdentifier: DailySummaryCell.identifier, for: indexPath) as! DailySummaryCell
+            let isExpanded = viewModel.isExpanded(at: idx)
+            cell.configure(with: forecast, isExpanded: isExpanded)
+            cell.delegate = self
+            return cell
+        case .detail(_, let forecast):
+            print("DEBUG: Detail cell for day \(forecast.date), hourly count: \(forecast.hourlyForecasts.count)")
+            let cell = tableView.dequeueReusableCell(withIdentifier: HourlyDetailCell.identifier, for: indexPath) as! HourlyDetailCell
+            cell.configure(with: forecast.hourlyForecasts, date: forecast.date)
+            return cell
+        }
+        
+        /*guard let cell = tableView.dequeueReusableCell(withIdentifier: DailyForecastCell.identifier, for: indexPath) as? DailyForecastCell else {
             return UITableViewCell()
         }
         
@@ -248,7 +282,7 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
         cell.configure(with: forecast, isExpanded: isExpanded)
         cell.delegate = self
         
-        return cell
+        return cell*/
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -256,21 +290,42 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     }
 
     func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
-        return viewModel.isExpanded(at: indexPath.row) ? 220 : 70
+        return /*viewModel.isExpanded(at: indexPath.row) ? 220 :*/ 70
     }
     //reload only the selected row
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        viewModel.toggleExpanded(at: indexPath.row)
-        tableView.reloadRows(at: [indexPath], with: .automatic)
+        /*viewModel.toggleExpanded(at: indexPath.row)
+        tableView.reloadRows(at: [indexPath], with: .automatic)*/
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 }
 
 // MARK: - DailyForecastCellDelegate
-extension DetailViewController: DailyForecastCellDelegate {
+extension DetailViewController: DailySummaryCellDelegate {
 
-    func didTapExpandButton(for cell: DailyForecastCell) {
-        guard let indexPath = tableView.indexPath(for: cell) else { return }
+    func didTapExpandButton(for cell: DailySummaryCell) {
+        guard let indexPath = tableView.indexPath(for: cell) else {return}
+        
+        //find originalday index from summary
+        guard case .summary(let dayIndex, let forecast) = rows[indexPath.row] else { return }
+        let wasExpanded = viewModel.isExpanded(at: dayIndex)
+        viewModel.toggleExpanded(at: dayIndex)
+        
+        if !wasExpanded{
+            // insert detail row
+            let newIndexPath = IndexPath(row: indexPath.row + 1, section: 0)
+            
+            rows.insert(.detail(dayIndex, forecast), at: newIndexPath.row)
+            tableView.insertRows(at: [newIndexPath], with: .automatic)
+        } else {
+            // delete detail row
+            let detailIndexPath = IndexPath(row: indexPath.row + 1, section: 0)
+            rows.remove(at: detailIndexPath.row)
+            tableView.deleteRows(at: [detailIndexPath], with: .automatic)
+        }
+        
+        /*guard let indexPath = tableView.indexPath(for: cell) else { return }
         viewModel.toggleExpanded(at: indexPath.row)
-        tableView.reloadRows(at: [indexPath], with: .automatic)
+        tableView.reloadRows(at: [indexPath], with: .automatic)*/
     }
 }
