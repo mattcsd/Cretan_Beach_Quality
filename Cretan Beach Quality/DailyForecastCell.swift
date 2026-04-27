@@ -112,7 +112,6 @@ class DailyForecastCell: UITableViewCell {
     @objc private func expandButtonTapped() {
         delegate?.didTapExpandButton(for: self)
         
-        // could 
     }
     
     private func setupHourlyView() {
