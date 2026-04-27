@@ -300,7 +300,7 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     }
 }
 
-// MARK: - DailyForecastCellDelegate
+// MARK: - DailySummaryCellDelegate
 extension DetailViewController: DailySummaryCellDelegate {
 
     func didTapExpandButton(for cell: DailySummaryCell) {
@@ -308,21 +308,11 @@ extension DetailViewController: DailySummaryCellDelegate {
         
         //find originalday index from summary
         guard case .summary(let dayIndex, let forecast) = rows[indexPath.row] else { return }
-        let wasExpanded = viewModel.isExpanded(at: dayIndex)
-        viewModel.toggleExpanded(at: dayIndex)
+
         
-        if !wasExpanded{
-            // insert detail row
-            let newIndexPath = IndexPath(row: indexPath.row + 1, section: 0)
-            
-            rows.insert(.detail(dayIndex, forecast), at: newIndexPath.row)
-            tableView.insertRows(at: [newIndexPath], with: .automatic)
-        } else {
-            // delete detail row
-            let detailIndexPath = IndexPath(row: indexPath.row + 1, section: 0)
-            rows.remove(at: detailIndexPath.row)
-            tableView.deleteRows(at: [detailIndexPath], with: .automatic)
-        }
+        viewModel.toggleExpanded(at: dayIndex)
+        rebuildRows()
+        tableView.reloadData()
         
         /*guard let indexPath = tableView.indexPath(for: cell) else { return }
         viewModel.toggleExpanded(at: indexPath.row)

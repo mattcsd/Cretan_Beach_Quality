@@ -14,11 +14,12 @@ class HourlyDetailCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         contentView.addSubview(hourlyView)
         hourlyView.translatesAutoresizingMaskIntoConstraints = false
+        
         NSLayoutConstraint.activate([
-            hourlyView.topAnchor.constraint(equalTo: contentView.topAnchor),
-            hourlyView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            hourlyView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            hourlyView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
+            hourlyView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            hourlyView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            hourlyView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            hourlyView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8)
         ])
     }
     
