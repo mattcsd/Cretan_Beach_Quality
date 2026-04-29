@@ -9,6 +9,11 @@ import Foundation
 import Combine
 
 class DetailViewModel{
+    enum RowType {
+        case summary(Int, DailyForecast)
+        case detail(Int, DailyForecast)
+    }
+    
     // MARK: - data(private set with init)
     private let beachItem: WaterQuality
     private let beachLatitude: Double?
@@ -16,14 +21,15 @@ class DetailViewModel{
     
     // (set) used so only this instance can write to these, everyone can (get)
     //private(set) var weatherData: WeatherResponse?
-    private(set) var expandedIndex: Int?
+    //private(set) var expandedIndex: Int?
+    private(set) var expandedIndexes: Set<Int> = []
     
     //MARK: listeners/announcers
     @Published var dailyForecasts: [DailyForecast] = []
     @Published var weatherData: WeatherResponse?
     @Published var onError: String? = nil
     @Published var det_isLoading: Bool = false
-    
+    @Published var rows: [RowType] = []
     
     //MARK: computed properties for View
     var coastName: String { beachItem.coast ?? "Unknown"}
@@ -34,7 +40,7 @@ class DetailViewModel{
     
     var numberOfForecastDays: Int {dailyForecasts.count}
     func forecast(at index: Int) -> DailyForecast { dailyForecasts[index] }
-    func isExpanded(at index: Int) -> Bool {expandedIndex == index}
+    //func isExpanded(at index: Int) -> Bool {expandedIndex == index}
     
     //MARK: init
     init(beachItem: WaterQuality, latitude: Double?, longitude: Double?){
@@ -60,6 +66,7 @@ class DetailViewModel{
             //efoson einai published tha to mathei monos tou
             self.weatherData = weather
             self.dailyForecasts = weather.getDailyForecasts()
+            self.updateRows()
             self.det_isLoading = false
             /* pleon me to self.weatherData = weather*/
             //self.onWeatherLoaded?()
@@ -71,16 +78,31 @@ class DetailViewModel{
     }
     //===================================end async/await
     
+    func isExpanded(at index: Int) -> Bool {
+        expandedIndexes.contains(index)
+    }
+
     func toggleExpanded(at index: Int) {
-        if expandedIndex == index {
-            expandedIndex = nil
+        if expandedIndexes.contains(index) {
+            expandedIndexes.remove(index)
         } else {
-            expandedIndex = index
+            expandedIndexes.insert(index)
         }
-        //inorder not to reload all rows when only one needs updating. onWeatherLoaded?()  // tell table to reload rows
+        updateRows()
     }
         
     // MARK: - Helpers
+    private func updateRows() {
+        var newRows: [RowType] = []
+        for(idx, forecast) in dailyForecasts.enumerated() {
+            newRows.append(.summary(idx, forecast))
+            if expandedIndexes.contains(idx){
+                newRows.append(.detail(idx, forecast))
+            }
+        }
+        rows = newRows
+    }
+    
     private func formatDate(_ dateString: String?) -> String {
         guard let dateString = dateString, !dateString.isEmpty else {
             return "Date: N/A"

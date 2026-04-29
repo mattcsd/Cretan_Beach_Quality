@@ -10,7 +10,7 @@ import Foundation
 
 class GeocodingService {
     static let shared = GeocodingService()
-    private let geonamesUsername = "mattsik"
+    private let geonamesUsername = "geonames1"
     
     private init() {}
     

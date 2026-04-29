@@ -31,7 +31,7 @@ struct GeocodingRequest: APIRequest {
     typealias Response = GeoNamesSearchResponse
     
     let query: String
-    let username = "mattsik"
+    let username = "geonames1"
     
     
     var url: URL {

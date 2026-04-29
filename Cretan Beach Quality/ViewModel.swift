@@ -79,6 +79,8 @@ class ViewModel{
         let searchQuery = "\(cleanedName) \(region)"
 
         do {
+            
+            print("MPHKAME KAI KANOME REQUESTING GEOCODE FOR \(searchQuery)")
             let request = GeocodingRequest(query: searchQuery)
             let response: GeoNamesSearchResponse = try await NetworkManager.shared.fetchAsync(request)
             

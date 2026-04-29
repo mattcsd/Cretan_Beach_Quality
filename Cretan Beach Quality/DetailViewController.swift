@@ -16,7 +16,7 @@ class DetailViewController: UIViewController {
     var viewModel: DetailViewModel!
     //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say SINCE I HAVE CREATED THIS OUTSIDE OF HERE
 
-    private var rows: [RowType] = []
+    //private var rows: [RowType] = []
     private let currentWeatherView = CurrentWeatherView()
     private let tableView = UITableView()
     
@@ -77,7 +77,7 @@ class DetailViewController: UIViewController {
         viewModel.$dailyForecasts
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.rebuildRows()
+                //self?.rebuildRows()
                 self?.tableView.reloadData()
             }
             .store(in: &cancellables)
@@ -216,7 +216,7 @@ class DetailViewController: UIViewController {
             tableView.tableHeaderView = headerView
         }
     }
-    
+    /*
     enum RowType {
         case summary(Int, DailyForecast)
         case detail(Int, DailyForecast)
@@ -226,11 +226,11 @@ class DetailViewController: UIViewController {
         rows = []
         for (index, forecast) in viewModel.dailyForecasts.enumerated() {
             rows.append(.summary(index, forecast))
-            if viewModel.isExpanded(at: index){
+            if viewModel.expandedIndexes.contains(index) {
                 rows.append(.detail(index, forecast))
             }
         }
-    }
+    }*/
     
     // simple gray divider
     private func createDivider () -> UIView {
@@ -254,11 +254,11 @@ class DetailViewController: UIViewController {
 extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return rows.count
+        return viewModel.rows.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        switch rows[indexPath.row]{
+        switch viewModel.rows[indexPath.row]{
         case .summary(let idx, let forecast):
             let cell = tableView.dequeueReusableCell(withIdentifier: DailySummaryCell.identifier, for: indexPath) as! DailySummaryCell
             let isExpanded = viewModel.isExpanded(at: idx)
@@ -307,11 +307,11 @@ extension DetailViewController: DailySummaryCellDelegate {
         guard let indexPath = tableView.indexPath(for: cell) else {return}
         
         //find originalday index from summary
-        guard case .summary(let dayIndex, let forecast) = rows[indexPath.row] else { return }
+        guard case .summary(let dayIndex, _) = viewModel.rows[indexPath.row] else { return }
 
         
         viewModel.toggleExpanded(at: dayIndex)
-        rebuildRows()
+        //rebuildRows()
         tableView.reloadData()
         
         /*guard let indexPath = tableView.indexPath(for: cell) else { return }
