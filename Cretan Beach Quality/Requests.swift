@@ -7,36 +7,48 @@
 
 import Foundation
 
-struct WeatherRequest: APIRequest{
+struct WeatherRequest: WeatherAPIRequest {
     typealias Response = WeatherResponse
+
     let latitude: Double
     let longitude: Double
+    let forecastDays = 7
     
-    var url: URL {
-        let forecastDays = 7
-        let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(latitude)&longitude=\(longitude)&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&timezone=auto&forecast_days=\(forecastDays)"
-        return URL(string: urlString)!
+    var path: String { "/v1/forecast" }
+    var urlParameters: [String: Any] {
+        [
+            "latitude": latitude,
+            "longitude": longitude,
+            "current": "temperature_2m,weather_code,wind_speed_10m,wind_direction_10m",
+            "hourly": "temperature_2m,wind_speed_10m,wind_direction_10m,weather_code",
+            "timezone": "auto",
+            "forecast_days": forecastDays
+        ]
     }
 }
 
-struct BeachListRequest: APIRequest {
+struct BeachListRequest: GovAPIRequest {
     typealias Response = [WaterQuality]
     
-    var url: URL{
-        URL(string: "https://data.gov.gr/api/v1/query/apdkriti-swimwater")!
+    var path: String { "/api/v1/query/apdkriti-swimwater" }
+    var urlParameters: [String: Any] { [:] }
+}
+
+struct GeoNamesRequest<ResponseType: Decodable>: GeoAPIRequest {
+    typealias Response = ResponseType
+    
+    let query: String
+    let username: String = "geonames1"
+    
+    var path: String { "/searchJSON" }
+    var urlParameters: [String: Any] {
+        [
+            "q": query,
+            "country": "GR",
+            "maxRows": 1,
+            "username": username
+        ]
     }
 }
 
-struct GeocodingRequest: APIRequest {
-    typealias Response = GeoNamesSearchResponse
-    
-    let query: String
-    let username = "geonames1"
-    
-    
-    var url: URL {
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let urlString = "https://secure.geonames.org/searchJSON?q=\(encodedQuery)&country=GR&maxRows=1&username=\(username)"
-        return URL(string: urlString)!
-    }
-}
+typealias GeocodingRequest = GeoNamesRequest<GeoNamesSearchResponse>

@@ -16,12 +16,9 @@ class DetailViewController: UIViewController {
     var viewModel: DetailViewModel!
     //pros stigmhn tha to afhsw. mellontika to kanw optional kai kathe fora unwrap// i think i need ! to say SINCE I HAVE CREATED THIS OUTSIDE OF HERE
 
-    //private var rows: [RowType] = []
     private let currentWeatherView = CurrentWeatherView()
     private let tableView = UITableView()
-    
-    //private var weatherErrorLabel: UILabel?
-    
+        
     //water quality section
     private let waterQualityTitle: UILabel = {
         let label = UILabel()
@@ -44,9 +41,6 @@ class DetailViewController: UIViewController {
         setupBindings()
         configureWaterQuality()
         currentWeatherView.showLoading()
-        //print(viewModel != nil ? "DETAILVIEWMODEL NOT nil" : "DETAILVIEWMODEL IS nil")
-        //TESTING ASYNC
-        //viewModel.loadWeather()
         
         Task {
             await viewModel.loadWeatherAsync()
@@ -202,9 +196,7 @@ class DetailViewController: UIViewController {
         frame.size.width = tableView.bounds.width
         headerView.frame = frame
         tableView.tableHeaderView = headerView
-        
-        //tableView.tableHeaderView = headerView
-        
+                
         // force layout to calculate header height
         headerView.setNeedsLayout()
         headerView.layoutIfNeeded()
@@ -216,21 +208,6 @@ class DetailViewController: UIViewController {
             tableView.tableHeaderView = headerView
         }
     }
-    /*
-    enum RowType {
-        case summary(Int, DailyForecast)
-        case detail(Int, DailyForecast)
-    }
-    
-    private func rebuildRows(){
-        rows = []
-        for (index, forecast) in viewModel.dailyForecasts.enumerated() {
-            rows.append(.summary(index, forecast))
-            if viewModel.expandedIndexes.contains(index) {
-                rows.append(.detail(index, forecast))
-            }
-        }
-    }*/
     
     // simple gray divider
     private func createDivider () -> UIView {
@@ -271,18 +248,6 @@ extension DetailViewController: UITableViewDelegate, UITableViewDataSource {
             cell.configure(with: forecast.hourlyForecasts, date: forecast.date)
             return cell
         }
-        
-        /*guard let cell = tableView.dequeueReusableCell(withIdentifier: DailyForecastCell.identifier, for: indexPath) as? DailyForecastCell else {
-            return UITableViewCell()
-        }
-        
-        let forecast = viewModel.forecast(at: indexPath.row)
-        let isExpanded = viewModel.isExpanded(at: indexPath.row)
-        
-        cell.configure(with: forecast, isExpanded: isExpanded)
-        cell.delegate = self
-        
-        return cell*/
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {

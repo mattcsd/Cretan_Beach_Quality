@@ -105,21 +105,13 @@ class ViewModel{
         isLoading = true
         errorMessage = nil
         
-        /*let urlString = "https://data.gov.gr/api/v1/query/apdkriti-swimwater"
-        guard let url = URL(string: urlString) else {
-            //onLoadingChanged?(false)
-            //onError?("Invalid URL")
-            isLoading = false
-            errorMessage = "Invalid URL"
-            return
-        }*/
-        
         Task { /* NOT do i need [weak self] in guard let self = self else {return} nomizw naiu giati an o user bgei kai to network call akoma petaei?*/
             do {
                 //let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(from:url)
                 let request = BeachListRequest()
                 let data: [WaterQuality] = try await NetworkManager.shared.fetchAsync(request)
                 
+                //triggers
                 self.allBeaches = data
                 self.isLoading = false
                 
